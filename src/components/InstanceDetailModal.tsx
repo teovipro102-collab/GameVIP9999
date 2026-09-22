@@ -48,9 +48,9 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
     },
     {
       mode: CameraMode.LOW_GROUND,
-      label: '3. Sát Mặt Đường (Asphalt Ground Cam)',
-      desc: 'Trạm quay sát mặt đường đón đoàn xe xé gió tốc độ cao lao vút qua ống kính',
-      tag: 'Sát Mặt Đường'
+      label: '3. Sát Mặt Đường (Giữa Vạch - Lùi 10m)',
+      desc: 'Sát mặt đường căn chính giữa vạch tim đường, lùi sau 10m lướt êm dịu chuẩn Live Show',
+      tag: 'Giữa Vạch Lùi 10m'
     },
     {
       mode: CameraMode.HOOD,
@@ -72,9 +72,9 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
     },
     {
       mode: CameraMode.OVERTAKE_ACTION,
-      label: '7. Góc Vượt Mặt (Duel Battle Cam)',
-      desc: 'Bao quát cặp xe so kè quyết liệt, bắt trọn từng pha lách gió và bứt tốc',
-      tag: 'So Kè Vượt Mặt'
+      label: '7. Góc Vượt Mặt',
+      desc: 'Cận cảnh hành động khi xe lách qua đối thủ',
+      tag: 'Vượt Mặt'
     },
     {
       mode: CameraMode.COLLISION_DRIFT,

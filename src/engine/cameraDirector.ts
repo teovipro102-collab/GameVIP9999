@@ -166,12 +166,6 @@ export class CameraDirector {
   private helipadStationPos: THREE.Vector3 = new THREE.Vector3();
   private hasHelipadPos: boolean = false;
 
-  // Trạm quay sát mặt đường động / ven vỉa gờ kerb (Low Ground Dynamic Station)
-  private lowGroundStationPos: THREE.Vector3 = new THREE.Vector3();
-  private lowGroundTangent: THREE.Vector3 = new THREE.Vector3(0, 0, 1);
-  private hasLowGroundStation: boolean = false;
-  private lowGroundDwellTimer: number = 0;
-
   // Smoothing buffers for cinematic movement (Gimbal chống rung quang học)
   private smoothedCamPos: THREE.Vector3 = new THREE.Vector3(0, 10, 20);
   private smoothedLookTarget: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -217,8 +211,6 @@ export class CameraDirector {
     this.currentMode = mode;
     this.isManualLocked = manualLock;
     this.dwellTimer = 0;
-    this.hasLowGroundStation = false;
-    this.lowGroundDwellTimer = 0;
     this.hasStationPos = false;
     this.hasGrandstandPos = false;
     this.hasSpectatorPos = false;
@@ -235,8 +227,6 @@ export class CameraDirector {
 
   resetFirstFrame() {
     this.isFirstFrame = true;
-    this.hasLowGroundStation = false;
-    this.lowGroundDwellTimer = 0;
     this.hasStationPos = false;
     this.hasGrandstandPos = false;
     this.hasSpectatorPos = false;
@@ -382,66 +372,6 @@ export class CameraDirector {
     const rawForward = new THREE.Vector3(0, 0, 1).applyQuaternion(carQuat).normalize();
     const up = new THREE.Vector3(0, 1, 0);
 
-    // =========================================================================
-    // XÁC ĐỊNH BỐI CẢNH SO KÈ / VƯỢT MẶT (ACTIVE DUEL & RACE BATTLE CONTEXT)
-    // Tìm cặp xe đang so kè sát nút nhất trên đường đua để bắt trọn bối cảnh cuộc đua
-    // =========================================================================
-    let duelCarA: Car3DObject = leaderCar;
-    let duelCarB: Car3DObject = cars.length > 1 ? (cars.find(c => c.state.rank === 2) || cars[1]) : leaderCar;
-    let minDuelDistance = Infinity;
-
-    // 1. Ưu tiên xe đang có sự kiện vượt mặt (activeOvertakeCarId)
-    if (activeOvertakeCarId) {
-      const activeCar = cars.find(c => c.state.id === activeOvertakeCarId);
-      if (activeCar) {
-        duelCarA = activeCar;
-        for (const c of cars) {
-          if (c.state.id === activeCar.state.id) continue;
-          const d = activeCar.group.position.distanceTo(c.group.position);
-          if (d < minDuelDistance) {
-            minDuelDistance = d;
-            duelCarB = c;
-          }
-        }
-      }
-    }
-
-    // 2. Nếu chưa có sự kiện vượt mặt hoặc khoảng cách quá lớn, quét tìm cặp xe gần nhau nhất trong Top 8
-    if (minDuelDistance > 65.0 && cars.length >= 2) {
-      const topRacers = [...cars].sort((a, b) => a.state.rank - b.state.rank).slice(0, 8);
-      for (let i = 0; i < topRacers.length; i++) {
-        for (let j = i + 1; j < topRacers.length; j++) {
-          const d = topRacers[i].group.position.distanceTo(topRacers[j].group.position);
-          if (d < minDuelDistance) {
-            minDuelDistance = d;
-            duelCarA = topRacers[i];
-            duelCarB = topRacers[j];
-          }
-        }
-      }
-    }
-
-    // Xác định xe đi trước và xe đang bám đuổi/tấn công
-    const progressA = duelCarA.state.lapProgress || 0;
-    const progressB = duelCarB.state.lapProgress || 0;
-    let duelDiff = progressA - progressB;
-    if (duelDiff < -0.5) duelDiff += 1.0;
-    if (duelDiff > 0.5) duelDiff -= 1.0;
-    const leadDuelCar = duelDiff >= 0 ? duelCarA : duelCarB;
-    const chaseDuelCar = duelDiff >= 0 ? duelCarB : duelCarA;
-
-    // Tâm điểm của cuộc so kè (Battle Midpoint)
-    const duelMidpoint = leadDuelCar.group.position.clone().lerp(chaseDuelCar.group.position, 0.5);
-    const forwardLead = new THREE.Vector3(0, 0, 1).applyQuaternion(leadDuelCar.group.quaternion);
-    const forwardChase = new THREE.Vector3(0, 0, 1).applyQuaternion(chaseDuelCar.group.quaternion);
-    let duelForward = forwardLead.clone().add(forwardChase);
-    if (duelForward.lengthSq() < 0.001) {
-      duelForward.set(0, 0, 1);
-    } else {
-      duelForward.normalize();
-    }
-    const duelRight = new THREE.Vector3().crossVectors(duelForward, up).normalize();
-
     // Phân loại các góc quay gắn liền trên xe (Mounted Cameras) - Tuyệt đối không có độ trễ tịnh tiến
     const isRigidMounted = (
       this.currentMode === CameraMode.HOOD ||
@@ -451,10 +381,11 @@ export class CameraDirector {
     );
 
     // Phân loại các góc quay bám sát xe (Tight Chase Cameras) - Khoảng cách tới xe cố định tuyệt đối, không co giãn giật cục
-    // Lưu ý: LOW_GROUND và OVERTAKE_ACTION đã được giải phóng để gắn vào trạm mặt đường và bối cảnh so kè 2 xe
     const isTightChase = (
       this.currentMode === CameraMode.BEHIND ||
+      this.currentMode === CameraMode.LOW_GROUND ||
       this.currentMode === CameraMode.SIDE_PROFILE ||
+      this.currentMode === CameraMode.OVERTAKE_ACTION ||
       this.currentMode === CameraMode.COLLISION_DRIFT ||
       this.currentMode === CameraMode.VERTICAL_PORTRAIT_OPTIMIZED
     );
@@ -584,11 +515,11 @@ export class CameraDirector {
       // =========================================================================
       case CameraMode.MULTI_CAR_OVERTAKE_WIDE: {
         camSmoothSpeed = 12.0;
-        idealPos.copy(duelMidpoint)
-          .addScaledVector(duelRight, 22.0)
-          .addScaledVector(duelForward, -24.0)
+        idealPos.copy(trackedPos)
+          .addScaledVector(right, 24.0)
+          .addScaledVector(forward, -22.0)
           .addScaledVector(up, 12.5);
-        lookTarget.copy(duelMidpoint).addScaledVector(duelForward, 12.0).addScaledVector(up, 1.1);
+        lookTarget.copy(trackedPos).addScaledVector(forward, 15.0).addScaledVector(up, 1.1);
         break;
       }
 
@@ -815,71 +746,38 @@ export class CameraDirector {
         break;
       }
 
-      // =========================================================================
-      // 3. SÁT MẶT ĐƯỜNG (LOW_GROUND) - BÁM THEO BỐI CẢNH CUỘC ĐUA & CẢM NHẬN TỐC ĐỘ XE
-      // KHÔNG bám vào 1 xe cố định! Đặt camera sát sạt mặt đường (0.55m) tại vỉa cua/mép vạch sơn,
-      // đón trọn đoàn xe rượt đuổi tốc độ cao lao vút qua trước ống kính với cảm giác xé gió cực hạn!
-      // =========================================================================
+      // 3. Sát Mặt Đường: Căn CHÍNH GIỮA VẠCH TIM ĐƯỜNG, lùi sau 10m, bám chuẩn độ cao mặt đường, nhìn rõ toàn bộ bề mặt đường & đoàn xe
       case CameraMode.LOW_GROUND: {
-        this.lowGroundDwellTimer += delta;
-        // Điểm tham chiếu: đoàn xe dẫn đầu hoặc xe đang so kè
-        const refCar = duelCarA || leaderCar;
-        const refPos = refCar.group.position;
-        const refProgress = (refCar.state && typeof refCar.state.lapProgress === 'number') ? refCar.state.lapProgress : 0;
+        camSmoothSpeed = 0;
+        const dist = 10.0; // Lùi về sau 10m (thêm 5m) theo đúng yêu cầu
+        const height = 1.18; // Cao 1.18m trên mặt đường - cực sát mặt đường, nhìn rõ vạch tim đường, gầm xe, lốp xe xé gió, không bao giờ bị chìm/cắt đứt mặt đường!
 
-        // Kiểm tra xem đoàn xe đã chạy qua trạm quay sát mặt đường chưa
-        let needNewStation = !this.hasLowGroundStation;
-        if (this.hasLowGroundStation) {
-          const toCar = refPos.clone().sub(this.lowGroundStationPos);
-          const distToCam = toCar.length();
-          const dotWithTangent = toCar.dot(this.lowGroundTangent);
-          // Đoàn xe đã lướt qua trạm quay và đi xa hơn 35m, hoặc xe ở quá xa > 140m, hoặc trạm đã đứng quá 4.5s
-          if (dotWithTangent > 35.0 || distToCam > 140.0 || this.lowGroundDwellTimer > 4.5) {
-            needNewStation = true;
-          }
+        if (this.trackCurve && targetCar && targetCar.state && typeof targetCar.state.lapProgress === 'number') {
+          const progressDelta = dist / this.trackLength;
+          let behindProgress = targetCar.state.lapProgress - progressDelta;
+          if (behindProgress < 0) behindProgress += 1.0;
+          if (behindProgress >= 1.0) behindProgress -= 1.0;
+
+          // Lấy tọa độ CHÍNH TÂM VẠCH TIM ĐƯỜNG tại vị trí lùi sau 10m
+          const roadCenterPt = new THREE.Vector3();
+          safeGetPointAt(this.trackCurve, behindProgress, roadCenterPt);
+
+          // Đặt camera chuẩn xác ở giữa tim đường và nâng đúng độ cao trên mặt đường (không bao giờ lệch sang bãi cát hay chìm dưới dốc)
+          idealPos.copy(roadCenterPt).addScaledVector(up, height);
+
+          // Điểm nhìn hướng dọc theo con đường về phía trước xe (28m phía trước), hơi chếch xuống đường để toàn bộ bề mặt đường xuất hiện từ mép đáy màn hình
+          let aheadProgress = targetCar.state.lapProgress + (28.0 / this.trackLength);
+          if (aheadProgress >= 1.0) aheadProgress -= 1.0;
+          const aheadPt = new THREE.Vector3();
+          safeGetPointAt(this.trackCurve, aheadProgress, aheadPt);
+
+          lookTarget.copy(aheadPt).addScaledVector(up, 0.72);
+        } else {
+          // Fallback khi chưa có spline: bám theo carPos nhưng nâng cao an toàn
+          const fwd = new THREE.Vector3(rawForward.x, 0, rawForward.z).normalize();
+          idealPos.copy(carPos).addScaledVector(fwd, -dist).addScaledVector(up, height);
+          lookTarget.copy(carPos).addScaledVector(fwd, 28.0).addScaledVector(up, 0.75);
         }
-
-        if (needNewStation) {
-          this.lowGroundDwellTimer = 0;
-          // Chọn vị trí đón đầu đoàn xe phía trước 50m - 75m
-          const aheadDist = 55.0 + ((Math.abs(refCar.state.id.charCodeAt(0) || 42) * 7) % 25.0);
-          if (this.trackCurve) {
-            let aheadProgress = refProgress + (aheadDist / this.trackLength);
-            if (aheadProgress >= 1.0) aheadProgress -= 1.0;
-            if (aheadProgress < 0) aheadProgress += 1.0;
-
-            const roadPt = new THREE.Vector3();
-            safeGetPointAt(this.trackCurve, aheadProgress, roadPt);
-            const tan = safeGetTangentAt(this.trackCurve, aheadProgress);
-            const flatTan = new THREE.Vector3(tan.x, 0, tan.z).normalize();
-            this.lowGroundTangent.copy(flatTan);
-
-            const roadRight = new THREE.Vector3(-flatTan.z, 0, flatTan.x).normalize();
-            // Đặt sát mép vạch sơn / vỉa kerb (4.8m so với tim đường)
-            const sideSign = (Math.sin(aheadProgress * 300) > 0 ? 1 : -1);
-            const sideDist = sideSign * 4.8;
-
-            // Độ cao cực thấp (0.55m) sát sạt mặt đường, lốp xe và vạch sơn
-            this.lowGroundStationPos.copy(roadPt)
-              .addScaledVector(roadRight, sideDist)
-              .addScaledVector(up, 0.55);
-          } else {
-            const fwd = new THREE.Vector3(rawForward.x, 0, rawForward.z).normalize();
-            const rgt = new THREE.Vector3(-fwd.z, 0, fwd.x).normalize();
-            this.lowGroundTangent.copy(fwd);
-            this.lowGroundStationPos.copy(refPos)
-              .addScaledVector(fwd, aheadDist)
-              .addScaledVector(rgt, 5.0)
-              .addScaledVector(up, 0.55);
-          }
-          this.hasLowGroundStation = true;
-        }
-
-        // Camera đứng yên tại trạm mặt đường
-        idealPos.copy(this.lowGroundStationPos);
-
-        // Ống kính lia theo đoàn xe đang lao tới (Race Context: thấy cả đoàn xe và cảnh quan lao vút)
-        lookTarget.copy(refPos).addScaledVector(up, 0.65);
         break;
       }
 
@@ -899,31 +797,14 @@ export class CameraDirector {
         break;
       }
 
-      // =========================================================================
-      // 8. GÓC VƯỢT MẶT (OVERTAKE_ACTION) - BÁM TRỌN BỐI CẢNH SO KÈ & CẢM NHẬN TỐC ĐỘ XE
-      // KHÔNG bám vào 1 xe cố định! Khung hình bao quát cả 2 xe đang so kè quyết liệt (kẻ bám đuổi & kẻ dẫn đầu).
-      // Vị trí camera linh hoạt theo trục so kè, bắt trọn từng pha lách gió (slipstream dive) và bứt tốc!
-      // =========================================================================
+      // 8. Góc Vượt Mặt: Cận cảnh hành động khi xe lách qua đối thủ
       case CameraMode.OVERTAKE_ACTION: {
-        camSmoothSpeed = 12.0; // Quán tính mượt mà chuẩn F1 Live Show, tạo cảm giác hai xe lao vun vút so với camera
-        const separation = leadDuelCar.group.position.distanceTo(chaseDuelCar.group.position);
-        // Khoảng lùi tỉ lệ theo độ tách rời giữa 2 xe, đảm bảo luôn thấy trọn vẹn cả 2 xe và khoảng trống vượt mặt
-        const backDist = Math.max(13.0, Math.min(28.0, separation * 0.85 + 11.0));
-        // Đặt camera hơi lệch sang phía bên hông (7.2m) và cao hơn mặt đường (2.85m)
-        const sideOffset = (Math.sin(this.simulatedTime * 0.45) > 0 ? 1 : -1) * 7.2;
-        
-        idealPos.copy(duelMidpoint)
-          .addScaledVector(duelForward, -backDist)
-          .addScaledVector(duelRight, sideOffset)
-          .addScaledVector(up, 2.85);
-
-        // Đảm bảo không bị lún xuống dưới dốc hoặc mặt đường
-        idealPos.y = Math.max(idealPos.y, duelMidpoint.y + 1.85);
-
-        // Nhìn thẳng vào tâm điểm giữa hai xe, hơi hướng về phía trước xe dẫn đầu 6.5m
-        lookTarget.copy(duelMidpoint)
-          .addScaledVector(duelForward, 6.5)
-          .addScaledVector(up, 0.95);
+        camSmoothSpeed = 0;
+        idealPos.copy(carPos)
+          .addScaledVector(smoothRight, -3.8)
+          .addScaledVector(this.smoothHeading, -5.5)
+          .addScaledVector(up, 2.0);
+        lookTarget.copy(carPos).addScaledVector(this.smoothHeading, 12.0).addScaledVector(up, 0.95);
         break;
       }
 
@@ -964,11 +845,7 @@ export class CameraDirector {
     } else {
       const isStationaryTrackside = (
         this.currentMode === CameraMode.TRACKSIDE_TELEPHOTO ||
-        this.currentMode === CameraMode.SPECTATOR_TRACKSIDE ||
-        this.currentMode === CameraMode.TRACKSIDE_APEX ||
-        this.currentMode === CameraMode.PASSING_STATIONARY ||
-        this.currentMode === CameraMode.LOW_GROUND ||
-        this.currentMode === CameraMode.KERB_CAM_GROUND
+        this.currentMode === CameraMode.SPECTATOR_TRACKSIDE
       );
 
       if (isRigidMounted) {
@@ -977,19 +854,19 @@ export class CameraDirector {
         this.smoothedCamPos.copy(idealPos);
         this.smoothedLookTarget.copy(lookTarget);
       } else if (isStationaryTrackside) {
-        // Máy quay ven đường & sát mặt đường: Đứng yên hoàn toàn 100% tại trạm, xoay ống kính lia theo đoàn xe chuẩn xác
+        // Máy quay ven đường đứng yên hoàn toàn 100% không di chuyển, xoay ống kính lia theo đoàn xe chuẩn xác
         this.smoothedCamPos.copy(idealPos);
-        this.smoothedLookTarget.lerp(lookTarget, 1.0 - Math.exp(-24.0 * delta));
+        this.smoothedLookTarget.lerp(lookTarget, 1.0 - Math.exp(-22.0 * delta));
       } else if (isTightChase) {
-        // CÁC GÓC BÁM ĐUÔI VÀ CẬN CẢNH (BEHIND, SIDE_PROFILE, COLLISION_DRIFT, VERTICAL_PORTRAIT):
+        // CÁC GÓC BÁM ĐUÔI VÀ CẬN CẢNH (LOW_GROUND, BEHIND, VERTICAL_PORTRAIT, OVERTAKE_ACTION, COLLISION_DRIFT):
         // Đồng bộ hóa 100% vị trí máy quay và tâm nhìn để triệt tiêu vĩnh viễn rung giật/co giãn góc nhìn
         this.smoothedCamPos.copy(idealPos);
         this.smoothedLookTarget.copy(lookTarget);
       } else {
-        // GÓC XA TRÊN KHÔNG VÀ GÓC SO KÈ VƯỢT MẶT (CHOPPER, DRONE, PANORAMIC, MULTI_CAR_PACK_CHASE, OVERTAKE_ACTION, MULTI_CAR_OVERTAKE):
-        // Bay lượn tự do đầm chắc trên cao, góc máy khóa chặt tâm so kè chuẩn truyền hình thực tế F1
-        const posSmooth = 1.0 - Math.exp(-12.0 * delta);
-        const lookSmooth = 1.0 - Math.exp(-18.0 * delta);
+        // GÓC XA TRÊN KHÔNG (CHOPPER, DRONE, PANORAMIC, MULTI_CAR_PACK_CHASE, MULTI_CAR_OVERTAKE):
+        // Bay lượn tự do đầm chắc trên cao, góc máy khóa chặt tâm đoàn xe chuẩn truyền hình thực tế F1
+        const posSmooth = 1.0 - Math.exp(-14.0 * delta);
+        const lookSmooth = 1.0 - Math.exp(-20.0 * delta);
         this.smoothedCamPos.lerp(idealPos, posSmooth);
         this.smoothedLookTarget.lerp(lookTarget, lookSmooth);
       }
