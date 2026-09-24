@@ -2,8 +2,8 @@
  * Instance Detail Modal - Multi-Instance Camera & Track Director
  */
 import React, { useState } from 'react';
-import { X, Camera, Trophy, Gauge, Activity, RefreshCw, Compass, MapPin, Sparkles, Layers, Lock, Unlock, Film, Video, CheckCircle } from 'lucide-react';
-import { CameraMode, InstanceRuntime, RoadLayoutType, DirectorStyle, DIRECTOR_STYLE_LIST } from '../types';
+import { X, Camera, Trophy, Gauge, Activity, RefreshCw, Compass, MapPin, Sparkles, Layers, Lock, Unlock } from 'lucide-react';
+import { CameraMode, InstanceRuntime, RoadLayoutType } from '../types';
 import { ROAD_LAYOUT_PRESETS, BIOMES } from '../engine/scenarioGenerator';
 
 interface InstanceDetailModalProps {
@@ -11,7 +11,6 @@ interface InstanceDetailModalProps {
   onClose: () => void;
   onSelectCamera: (instanceId: number, mode: CameraMode) => void;
   onUnlockCamera?: (instanceId: number) => void;
-  onSelectDirectorStyle?: (instanceId: number, style: DirectorStyle) => void;
   onSelectRoadLayout?: (instanceId: number, layoutId: RoadLayoutType) => void;
   onSelectBiome?: (instanceId: number, biomeId: string) => void;
   onForceRerollSeed: (instanceId: number) => void;
@@ -22,14 +21,13 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
   onClose,
   onSelectCamera,
   onUnlockCamera,
-  onSelectDirectorStyle,
   onSelectRoadLayout,
   onSelectBiome,
   onForceRerollSeed
 }) => {
   if (!instance) return null;
 
-  const [activeTab, setActiveTab] = useState<'cameras' | 'directors' | 'tracks' | 'biomes' | 'cars'>('directors');
+  const [activeTab, setActiveTab] = useState<'cameras' | 'tracks' | 'biomes' | 'cars'>('cameras');
   const [cameraFilter, setCameraFilter] = useState<'all' | 'classic' | 'broadcast'>('all');
 
   // Các Góc Quay Cinematic Tập Trung Vào Xe & Đoàn Đua
@@ -83,8 +81,14 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
       tag: 'Drift & Va Chạm'
     },
     {
+      mode: CameraMode.CINEMATIC_ORBIT,
+      label: '9. Xoay 360 Vòng',
+      desc: 'Quỹ đạo xoay mượt mà liên tục quanh xe',
+      tag: 'Orbit 360°'
+    },
+    {
       mode: CameraMode.COCKPIT_FIRST_PERSON,
-      label: '9. Góc Lái Cabin F1',
+      label: '10. Góc Lái Cabin F1',
       desc: 'Trải nghiệm trực tiếp bên trong buồng lái xe đua',
       tag: 'Cabin F1'
     },
@@ -231,21 +235,6 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-800 bg-slate-950 px-5 pt-2 gap-2 overflow-x-auto text-xs font-semibold">
           <button
-            onClick={() => setActiveTab('directors')}
-            className={`flex items-center gap-1.5 px-4 py-2 border-b-2 transition cursor-pointer ${
-              activeTab === 'directors'
-                ? 'border-cyan-500 text-cyan-300 bg-cyan-950/20'
-                : 'border-transparent text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Film className="w-4 h-4 text-cyan-400" />
-            7 Chế Độ Đạo Diễn Điện Ảnh
-            <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[10px] font-mono">
-              7 Profiles
-            </span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('cameras')}
             className={`flex items-center gap-1.5 px-4 py-2 border-b-2 transition cursor-pointer ${
               activeTab === 'cameras'
@@ -254,7 +243,7 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
             }`}
           >
             <Camera className="w-4 h-4 text-purple-400" />
-            {broadcastCameras.length + classicCameras.length} Góc Quay Tuyển Chọn ({broadcastCameras.length + classicCameras.length})
+            19 Góc Quay ({broadcastCameras.length + classicCameras.length})
           </button>
 
           <button
@@ -296,106 +285,7 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* TAB ĐẠO DIỄN: 7 CHẾ ĐỘ ĐẠO DIỄN ĐIỆN ẢNH */}
-          {activeTab === 'directors' && (
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-slate-900/40 border border-cyan-500/30">
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <Film className="w-4 h-4 text-cyan-400" />
-                    Hệ Thống 7 Chế Độ Đạo Diễn Điện Ảnh (AI Camera Director)
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Hệ thống tự động phân bổ ngẫu nhiên mỗi luồng một phong cách đạo diễn điện ảnh khác nhau. Bạn có thể chủ động chuyển đổi thủ công tại đây:
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs font-mono text-cyan-300 bg-cyan-950 px-2.5 py-1 rounded border border-cyan-500/40">
-                    Đang Chạy: {instance.directorStyleName || 'F1 Live 50/50'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                {DIRECTOR_STYLE_LIST.map((style) => {
-                  const isCurrent = (instance.directorStyle || DirectorStyle.F1_LIVE_SHOW_50_50) === style.id;
-
-                  return (
-                    <div
-                      key={style.id}
-                      className={`p-4 rounded-xl border transition flex flex-col justify-between relative ${
-                        isCurrent
-                          ? 'bg-cyan-950/40 border-cyan-400 ring-2 ring-cyan-500/30 shadow-lg'
-                          : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{style.badge}</span>
-                            <span className="text-xs font-bold text-white">{style.name}</span>
-                          </div>
-                          {isCurrent ? (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/40">
-                              <CheckCircle className="w-3 h-3 text-emerald-400" />
-                              ĐANG ÁP DỤNG
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                              {style.shortName}
-                            </span>
-                          )}
-                        </div>
-
-                        <p className="text-[11px] text-slate-300 mb-3 leading-relaxed">
-                          {style.description}
-                        </p>
-
-                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono mb-3">
-                          <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800">
-                            <span className="text-slate-400 block">Tỉ lệ phân bổ</span>
-                            <span className="font-semibold text-cyan-300">{style.ratioDesc}</span>
-                          </div>
-                          <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-800">
-                            <span className="text-slate-400 block">Nhịp cắt đạo diễn</span>
-                            <span className="font-semibold text-purple-300">{style.tempoDesc}</span>
-                          </div>
-                        </div>
-
-                        <div className="text-[10px] text-slate-400 bg-slate-900/60 p-2 rounded border border-slate-800/80 mb-3">
-                          <span className="text-slate-300 font-semibold">Bộ sưu tập góc máy:</span> {style.modesHighlight}
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => onSelectDirectorStyle && onSelectDirectorStyle(instance.id, style.id)}
-                        disabled={isCurrent}
-                        className={`w-full py-2 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          isCurrent
-                            ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 cursor-default'
-                            : 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-md active:scale-95'
-                        }`}
-                      >
-                        {isCurrent ? (
-                          <>
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                            Đang Vận Hành Trên Luồng #{instance.id}
-                          </>
-                        ) : (
-                          <>
-                            <Film className="w-3.5 h-3.5 text-white" />
-                            Áp Dụng Cho Luồng #{instance.id}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: GÓC QUAY CHI TIẾT */}
+          {/* TAB 1: 25 GÓC QUAY (15 TRUYỀN HÌNH + 10 ĐIỆN ẢNH) */}
           {activeTab === 'cameras' && (
             <div className="space-y-4">
               {/* Trạng thái Khóa / Tự động đổi góc của Camera Director */}

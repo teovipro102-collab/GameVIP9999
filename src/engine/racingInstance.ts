@@ -5,8 +5,6 @@ import { VehiclePhysicsSystem, Car3DObject } from './vehiclePhysics';
 import { BIOMES, ROAD_LAYOUT_PRESETS } from './scenarioGenerator';
 import {
   CameraMode,
-  DirectorStyle,
-  DIRECTOR_STYLE_LIST,
   AICarState,
   InstanceSeedData,
   InstanceRuntime,
@@ -332,25 +330,21 @@ export class RacingInstance {
     // Build Cars
     this.rebuildCars(seed, biome);
 
-    // Phân bổ 7 Phong Cách Đạo Diễn Điện Ảnh ngẫu nhiên độc lập cho từng luồng:
-    // Đảm bảo khi chạy 6 hoặc 8 luồng, mỗi luồng được cấp một phong cách đạo diễn hoàn toàn khác biệt
-    const ALL_STYLES: DirectorStyle[] = [
-      DirectorStyle.F1_LIVE_SHOW_50_50,
-      DirectorStyle.HOLLYWOOD_ACTION_THRILLER,
-      DirectorStyle.SKY_MASTER_AERIAL,
-      DirectorStyle.PURE_COCKPIT_SIM_RACER,
-      DirectorStyle.TRACKSIDE_SPECTATOR_TV,
-      DirectorStyle.TIKTOK_REELS_VIRAL,
-      DirectorStyle.APEX_DUEL_TACTICAL,
+    // Phân bổ đạo diễn điện ảnh ngẫu nhiên riêng cho từng luồng: mỗi luồng bắt đầu bằng một góc máy khác nhau với nhịp chuyển cảnh riêng biệt
+    const INITIAL_CAMERA_MODES: CameraMode[] = [
+      CameraMode.LOW_GROUND,              // 1. Góc sát mặt đường vạch giữa
+      CameraMode.CHOPPER_HELI_CHASE,       // 2. Trực thăng Helichase
+      CameraMode.TRACKSIDE_TELEPHOTO,      // 3. Telephoto ven đường
+      CameraMode.COCKPIT_FIRST_PERSON,     // 4. Cockpit buồng lái
+      CameraMode.SKY_DRONE_BROADCAST,      // 5. Flycam bám đuổi
+      CameraMode.MULTI_CAR_PACK_CHASE,     // 6. Bám đuôi đoàn xe trên cao
+      CameraMode.MULTI_CAR_OVERTAKE_WIDE,  // 7. Toàn cảnh vượt mặt
+      CameraMode.BUMPER_FIRST_PERSON       // 8. Cản trước xé gió
     ];
-    const styleIdx = (Math.abs(seed * 11 + (this.id - 1))) % ALL_STYLES.length;
-    const chosenStyle = ALL_STYLES[styleIdx];
-    this.cameraDirector.setDirectorStyle(chosenStyle);
-
-    const initialMode = CameraDirector.getInitialModeForStyle(chosenStyle, this.id);
+    const initialMode = INITIAL_CAMERA_MODES[(this.id - 1) % INITIAL_CAMERA_MODES.length];
     this.cameraDirector.setCameraMode(initialMode, false);
     // Nhịp chuyển cảnh riêng biệt theo luồng
-    this.cameraDirector.nextSwitchTime = 4.8 + ((this.id * 1.3) % 2.2);
+    this.cameraDirector.nextSwitchTime = 5.2 + ((this.id * 1.3) % 2.4);
 
     this.seedData = {
       seed,
@@ -361,7 +355,6 @@ export class RacingInstance {
       carCount: this.cars.length,
       cars: this.cars.map(c => c.state),
       aiAggressionBase: 0.85,
-      directorStyle: chosenStyle,
       createdAt: new Date().toISOString()
     };
 
@@ -534,26 +527,14 @@ export class RacingInstance {
     return { chunkCompleted, activeOvertakeCarId: activeOvertake, collisionCarId: activeCollision };
   }
 
-  public setDirectorStyle(style: DirectorStyle) {
-    this.cameraDirector.setDirectorStyle(style);
-    if (this.seedData) {
-      this.seedData.directorStyle = style;
-    }
-  }
-
   getRuntimeState(): InstanceRuntime {
     const leaderCar = this.cars.find(c => c.state.rank === 1) || this.cars[0];
-    const currentStyle = this.cameraDirector.directorStyle;
-    const styleInfo = DIRECTOR_STYLE_LIST.find(s => s.id === currentStyle);
-
     return {
       id: this.id,
       name: `Luồng #${this.id.toString().padStart(2, '0')}`,
       active: true,
       seedData: this.seedData,
       currentCameraMode: this.cameraDirector.currentMode,
-      directorStyle: currentStyle,
-      directorStyleName: styleInfo?.shortName || 'F1 Live 50/50',
       isCameraLocked: this.cameraDirector.isManualLocked,
       cameraDwellTimer: 0,
       cameraNextSwitchDuration: 5.0,

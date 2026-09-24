@@ -1,6 +1,6 @@
 import React, { RefObject } from 'react';
-import { Camera, Maximize2, Radio, Trophy, Gauge, Compass, Sparkles, ChevronRight, Film } from 'lucide-react';
-import { CameraMode, InstanceRuntime, DirectorStyle, DIRECTOR_STYLE_LIST } from '../types';
+import { Camera, Maximize2, Radio, Trophy, Gauge, Compass, Sparkles, ChevronRight } from 'lucide-react';
+import { CameraMode, InstanceRuntime } from '../types';
 import { ROAD_LAYOUT_PRESETS } from '../engine/scenarioGenerator';
 
 interface InstanceGridProps {
@@ -9,7 +9,6 @@ interface InstanceGridProps {
   activeCount: number;
   onInspectInstance: (instanceId: number) => void;
   onQuickSwitchCamera?: (instanceId: number, mode: CameraMode) => void;
-  onCycleDirectorStyle?: (instanceId: number) => void;
 }
 
 export const InstanceGrid: React.FC<InstanceGridProps> = ({
@@ -17,8 +16,7 @@ export const InstanceGrid: React.FC<InstanceGridProps> = ({
   instances,
   activeCount,
   onInspectInstance,
-  onQuickSwitchCamera,
-  onCycleDirectorStyle
+  onQuickSwitchCamera
 }) => {
   // Bố cục lưới dựa theo số instance kích hoạt
   const getGridColsClass = (count: number) => {
@@ -63,15 +61,15 @@ export const InstanceGrid: React.FC<InstanceGridProps> = ({
     CameraMode.SPECTATOR_TRACKSIDE,
     CameraMode.SIDE_CHASE_MULTI,
     CameraMode.TUNNEL_CEILING_FAST,
+    CameraMode.FENDER_WHEEL_LOOK,
     CameraMode.WING_REAR_LOOK,
-    CameraMode.KERB_CAM_GROUND,
     // Classic Cinematic Car angles
-    CameraMode.LOW_GROUND,
     CameraMode.HOOD,
     CameraMode.SIDE_PROFILE,
     CameraMode.LEADER_TRACKING,
     CameraMode.OVERTAKE_ACTION,
     CameraMode.COLLISION_DRIFT,
+    CameraMode.CINEMATIC_ORBIT,
     CameraMode.COCKPIT_FIRST_PERSON,
     CameraMode.BUMPER_FIRST_PERSON,
   ];
@@ -203,38 +201,20 @@ export const InstanceGrid: React.FC<InstanceGridProps> = ({
                     </div>
                   </div>
 
-                  {/* Thẻ Phong Cách Đạo Diễn Điện Ảnh (1 trong 7 chế độ) */}
-                  <div className="flex items-center justify-between text-[9px] gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCycleDirectorStyle && onCycleDirectorStyle(instance.id);
-                      }}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-mono text-[8.5px] font-bold border border-amber-500/40 cursor-pointer transition active:scale-95 truncate max-w-[130px]"
-                      title="Bấm để đổi luân phiên 1 trong 7 Chế Độ Đạo Diễn Điện Ảnh cho luồng này"
-                    >
-                      <Film className="w-2.5 h-2.5 text-amber-400 shrink-0" />
-                      <span className="truncate">{instance.directorStyleName || 'F1 Live 50/50'}</span>
-                    </button>
-
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 font-mono font-bold border border-emerald-500/40 flex items-center gap-1 shadow-sm shrink-0">
+                  {/* Thẻ Góc quay trong 9 góc truyền hình + Nút chuyển nhanh */}
+                  <div className="flex items-center justify-between text-[9px]">
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 font-mono font-bold border border-emerald-500/40 flex items-center gap-1 shadow-sm">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                       {instance.fps || 60} FPS
                     </span>
-                  </div>
-
-                  {/* Thẻ Góc quay hiện tại + Nút chuyển nhanh */}
-                  <div className="flex items-center justify-end text-[9px]">
                     <button
                       onClick={(e) => handleNextCamera(instance.id, instance.currentCameraMode, e)}
-                      className="w-full flex items-center justify-between gap-1 text-purple-200 bg-purple-950/90 hover:bg-purple-900/90 px-1.5 py-0.5 rounded border border-purple-500/50 cursor-pointer transition active:scale-95"
-                      title="Bấm để chuyển nhanh sang góc quay tiếp theo"
+                      className="flex items-center gap-1 text-purple-200 bg-purple-950/90 hover:bg-purple-900/90 px-1.5 py-0.5 rounded border border-purple-500/50 cursor-pointer transition active:scale-95"
+                      title="Bấm để chuyển nhanh sang góc quay tiếp theo trong 9 góc truyền hình"
                     >
-                      <div className="flex items-center gap-1 truncate">
-                        <Camera className="w-2.5 h-2.5 text-purple-400 shrink-0" />
-                        <span className="truncate font-medium">{getCameraLabelVN(instance.currentCameraMode)}</span>
-                      </div>
-                      <ChevronRight className="w-2.5 h-2.5 text-purple-400 shrink-0" />
+                      <Camera className="w-2.5 h-2.5 text-purple-400" />
+                      <span className="truncate max-w-[90px] font-medium">{getCameraLabelVN(instance.currentCameraMode)}</span>
+                      <ChevronRight className="w-2.5 h-2.5 text-purple-400" />
                     </button>
                   </div>
                 </div>
@@ -247,7 +227,7 @@ export const InstanceGrid: React.FC<InstanceGridProps> = ({
                     className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cyan-600/95 hover:bg-cyan-500 text-white text-[11px] font-bold shadow-xl backdrop-blur cursor-pointer active:scale-95 transition border border-cyan-400/40"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
-                    Tùy Chỉnh 7 Chế Độ Đạo Diễn &bull; 19 Góc Quay &bull; 20 Bản Đồ
+                    Tùy Chỉnh 9 Góc Truyền Hình &bull; 20 Đường &bull; 20 Môi Trường
                   </button>
                 </div>
 

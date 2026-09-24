@@ -7,120 +7,6 @@ export type VideoFileFormat = 'mp4' | 'mov' | 'webm';
 export type FPSOption = 30 | 60 | 120;
 export type VideoDurationPreset = 30 | 60 | 70 | 120 | number;
 
-/**
- * 7 Chế Độ Đạo Diễn Điện Ảnh Camera (AI Camera Director Profiles)
- * Phân bổ luân phiên hoặc ngẫu nhiên độc lập cho từng luồng đua
- */
-export enum DirectorStyle {
-  F1_LIVE_SHOW_50_50 = 'F1_LIVE_SHOW_50_50',               // 1. Chuẩn F1 Live Show 50/50 (Bao quát 50% / Cận cảnh 50%)
-  HOLLYWOOD_ACTION_THRILLER = 'HOLLYWOOD_ACTION_THRILLER', // 2. Điện ảnh Bom tấn Hành động (75% Cận cảnh xé gió, cắt nhanh 2.2-4.0s)
-  SKY_MASTER_AERIAL = 'SKY_MASTER_AERIAL',                 // 3. Trực thăng & Flycam Không trung (80% Trực thăng & Drone toàn cảnh)
-  PURE_COCKPIT_SIM_RACER = 'PURE_COCKPIT_SIM_RACER',       // 4. Góc Lái Thứ Nhất & Buồng Lái Sim-Racer (70% POV Cockpit/Hood)
-  TRACKSIDE_SPECTATOR_TV = 'TRACKSIDE_SPECTATOR_TV',       // 5. Trạm Quay Ven Đường & Khán Đài F1 (85% Telephoto 85mm & Apex)
-  TIKTOK_REELS_VIRAL = 'TIKTOK_REELS_VIRAL',               // 6. Xu Hướng Video Ngắn Siêu Tốc (Khung hình dọc 9:16 & Tim đường)
-  APEX_DUEL_TACTICAL = 'APEX_DUEL_TACTICAL',               // 7. Đại Chiến So Kè & Săn Đuổi Vượt Mặt (80% Bám sát đối đầu P1-P2-P3)
-}
-
-export interface DirectorStyleInfo {
-  id: DirectorStyle;
-  name: string;
-  shortName: string;
-  tagline: string;
-  description: string;
-  badgeColor: string;
-  badge: string;
-  ratioDesc: string;
-  tempoDesc: string;
-  modesHighlight: string;
-}
-
-export const DIRECTOR_STYLE_LIST: DirectorStyleInfo[] = [
-  {
-    id: DirectorStyle.F1_LIVE_SHOW_50_50,
-    name: 'F1 Live Show 50/50',
-    shortName: 'F1 Live 50/50',
-    tagline: 'Cân bằng 50% Bao quát & 50% Cận cảnh',
-    description: 'Chuẩn phát sóng trực tiếp Grand Prix F1 với nhịp cắt 4.8s-6.8s, gyro-damping 2.4 và bắt trọn toàn bộ đoàn xe.',
-    badgeColor: 'text-cyan-400 bg-cyan-950/70 border-cyan-500/40',
-    badge: '🎬',
-    ratioDesc: '50% Toàn cảnh / 50% Cận cảnh',
-    tempoDesc: 'Nhịp cắt 4.8s - 6.8s',
-    modesHighlight: 'Đoàn xe 100m, Trực thăng, Telephoto 85mm, Bám đuôi P1-P3, Mui xe'
-  },
-  {
-    id: DirectorStyle.HOLLYWOOD_ACTION_THRILLER,
-    name: 'Hollywood Action Thriller',
-    shortName: 'Bom Tấn Action',
-    tagline: '75% Cận cảnh xé gió & nhịp cắt 2.2s-4.0s dồn dập',
-    description: 'Phong cách bom tấn Fast & Furious / Mad Max: góc gầm xe, cản trước xé gió, kẹp bánh xe và rung chấn tăng tốc.',
-    badgeColor: 'text-amber-400 bg-amber-950/70 border-amber-500/40',
-    badge: '🔥',
-    ratioDesc: '75% Cận cảnh / 25% Toàn cảnh',
-    tempoDesc: 'Nhịp cắt dồn dập 2.2s - 4.0s',
-    modesHighlight: 'Sát mặt đường, Cản trước siêu tốc, Bánh xe Drift, Vượt mặt, Gầm xe'
-  },
-  {
-    id: DirectorStyle.SKY_MASTER_AERIAL,
-    name: 'Sky Master Aerial Drone',
-    shortName: 'Trực Thăng & Drone',
-    tagline: '80% Trực thăng & Flycam lướt êm 6.5s-9.5s',
-    description: 'Bao quát toàn cảnh sa bàn trường đua, bắt trọn 15 siêu xe uốn lượn qua các khúc cua hiểm trở từ độ cao 35m-60m.',
-    badgeColor: 'text-sky-400 bg-sky-950/70 border-sky-500/40',
-    badge: '🚁',
-    ratioDesc: '80% Không trung / 20% Mặt đất',
-    tempoDesc: 'Lướt êm dịu 6.5s - 9.5s',
-    modesHighlight: 'Trực thăng Live Show, Drone Flycam, Toàn cảnh trường đua, Đài cao'
-  },
-  {
-    id: DirectorStyle.PURE_COCKPIT_SIM_RACER,
-    name: 'Pure Cockpit Sim-Racer POV',
-    shortName: 'Buồng Lái POV',
-    tagline: '70% Góc nhìn thứ nhất sau vô lăng F1 & Hypercar',
-    description: 'Trải nghiệm chân thực của tay đua: trực diện kính chắn gió, bảng đồng hồ vòng tua máy, gương chiếu hậu và lực bẻ cua.',
-    badgeColor: 'text-emerald-400 bg-emerald-950/70 border-emerald-500/40',
-    badge: '🏎️',
-    ratioDesc: '70% Buồng lái / 30% Đuổi sát',
-    tempoDesc: 'Nhịp cắt ổn định 4.5s - 7.5s',
-    modesHighlight: 'Góc lái cabin F1, Nắp mui xe Hood, Đón đầu xe, Cản trước'
-  },
-  {
-    id: DirectorStyle.TRACKSIDE_SPECTATOR_TV,
-    name: 'Trackside Grandstand TV',
-    shortName: 'Ven Đường & Khán Đài',
-    tagline: '85% Ống kính Tele 85mm ven rào chắn & đỉnh Apex',
-    description: 'Tái hiện chân thực cảm giác đứng sát mép hàng rào bê tông nghe tiếng xé gió Doppler vút qua mặt ở vận tốc 500 km/h.',
-    badgeColor: 'text-purple-400 bg-purple-950/70 border-purple-500/40',
-    badge: '🏁',
-    ratioDesc: '85% Ven đường / 15% Đuổi theo',
-    tempoDesc: 'Nhịp cắt đón xe 3.2s - 5.5s',
-    modesHighlight: 'Telephoto 85mm, Trạm quay đỉnh cua Apex, Gờ giảm tốc âm vỉa, Đài cao'
-  },
-  {
-    id: DirectorStyle.TIKTOK_REELS_VIRAL,
-    name: 'TikTok & Reels Viral Speed',
-    shortName: 'TikTok 9:16 Viral',
-    tagline: 'Khung hình dọc siêu tốc, bắt trọn khói drift & nitro',
-    description: 'Tối ưu hóa chuyên biệt cho video ngắn 9:16 với tỷ lệ vàng 1/3, nhịp cắt 3.0s-4.8s ăn khớp beat nhạc tốc độ.',
-    badgeColor: 'text-rose-400 bg-rose-950/70 border-rose-500/40',
-    badge: '📱',
-    ratioDesc: '70% Dọc 9:16 / 30% Action',
-    tempoDesc: 'Nhịp cắt theo beat 3.0s - 4.8s',
-    modesHighlight: 'Sát mặt đường tim vạch, Đón đầu đoàn xe, Khói Drift, Đuôi xe 100m'
-  },
-  {
-    id: DirectorStyle.APEX_DUEL_TACTICAL,
-    name: 'Apex Duel & Dogfight Chase',
-    shortName: 'Đại Chiến So Kè P1-P3',
-    tagline: '80% Bám sát đối đầu tay đôi & ép cua vượt mặt',
-    description: 'AI tự động khóa chặt vào cặp kỳ phùng địch thủ đang so kè sát nút dưới 8m, bắt từng cú slipstream và vẩy đuôi vượt mặt.',
-    badgeColor: 'text-red-400 bg-red-950/70 border-red-500/40',
-    badge: '⚔️',
-    ratioDesc: '80% So kè P1-P3 / 20% Toàn cảnh',
-    tempoDesc: 'Nhịp cắt linh hoạt 3.5s - 5.8s',
-    modesHighlight: 'Góc so kè vượt mặt, Bám sát xe dẫn đầu, Bên hông xe, Va chạm & Drift'
-  }
-];
-
 export enum CameraMode {
   // === CÁC GÓC QUAY TRUYỀN HÌNH TẬP TRUNG VÀO XE & NHIỀU XE ĐUA ===
   TRACKSIDE_TELEPHOTO = 'TRACKSIDE_TELEPHOTO', // 1. Telephoto ven đường lia theo đoàn xe (85mm F1)
@@ -309,7 +195,6 @@ export interface InstanceSeedData {
   carCount: number;
   cars: AICarState[];
   aiAggressionBase: number;
-  directorStyle?: DirectorStyle;
   createdAt: string;
 }
 
@@ -319,8 +204,6 @@ export interface InstanceRuntime {
   active: boolean;
   seedData: InstanceSeedData;
   currentCameraMode: CameraMode;
-  directorStyle: DirectorStyle;
-  directorStyleName: string;
   cameraDwellTimer: number;
   cameraNextSwitchDuration: number;
   targetCarId: string;

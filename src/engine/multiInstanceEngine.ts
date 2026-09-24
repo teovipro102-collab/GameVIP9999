@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RacingInstance } from './racingInstance';
-import { SystemConfig, CameraMode, RoadLayoutType, DirectorStyle, DIRECTOR_STYLE_LIST } from '../types';
+import { SystemConfig, CameraMode, RoadLayoutType } from '../types';
 import { audioEngine } from './audioEngine';
 import { commentaryEngine } from './commentaryEngine';
 import { getRaceStoryline } from './storylineEngine';
@@ -110,23 +110,6 @@ export class MultiInstanceEngine {
     const inst = this.instances.get(instanceId);
     if (inst) {
       inst.unlockCameraDirector();
-    }
-  }
-
-  setInstanceDirectorStyle(instanceId: number, style: DirectorStyle) {
-    const inst = this.instances.get(instanceId);
-    if (inst) {
-      inst.setDirectorStyle(style);
-    }
-  }
-
-  cycleInstanceDirectorStyle(instanceId: number) {
-    const inst = this.instances.get(instanceId);
-    if (inst) {
-      const styles = Object.values(DirectorStyle);
-      const currentIdx = styles.indexOf(inst.cameraDirector.directorStyle);
-      const nextIdx = (currentIdx + 1) % styles.length;
-      inst.setDirectorStyle(styles[nextIdx]);
     }
   }
 

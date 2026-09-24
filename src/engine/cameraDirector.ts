@@ -1,12 +1,11 @@
 import * as THREE from 'three';
-import { CameraMode, DirectorStyle } from '../types';
+import { CameraMode } from '../types';
 import { Car3DObject } from './vehiclePhysics';
 import { safeGetPointAt } from './curveUtils';
 
 export class CameraDirector {
   // Mặc định ban đầu luôn là góc truyền hình bao quát nhiều xe (Helicam / Multi-car pack)
   public currentMode: CameraMode = CameraMode.CHOPPER_HELI_CHASE;
-  public directorStyle: DirectorStyle = DirectorStyle.F1_LIVE_SHOW_50_50;
   public camera: THREE.PerspectiveCamera;
   public isManualLocked: boolean = false;
   private currentTargetCarId: string = '';
@@ -14,147 +13,45 @@ export class CameraDirector {
   public nextSwitchTime: number = 6.0; // 5.5 to 7.5 giây cho góc truyền hình bao quát
   private orbitAngle: number = 0;
 
-  public setDirectorStyle(style: DirectorStyle) {
-    this.directorStyle = style;
-  }
-
-  public static getInitialModeForStyle(style: DirectorStyle, instanceId: number): CameraMode {
-    switch (style) {
-      case DirectorStyle.HOLLYWOOD_ACTION_THRILLER:
-        return [CameraMode.BUMPER_FIRST_PERSON, CameraMode.LOW_GROUND, CameraMode.OVERTAKE_ACTION][instanceId % 3];
-      case DirectorStyle.SKY_MASTER_AERIAL:
-        return [CameraMode.CHOPPER_HELI_CHASE, CameraMode.SKY_DRONE_BROADCAST, CameraMode.PANORAMIC][instanceId % 3];
-      case DirectorStyle.PURE_COCKPIT_SIM_RACER:
-        return [CameraMode.COCKPIT_FIRST_PERSON, CameraMode.HOOD, CameraMode.BUMPER_FIRST_PERSON][instanceId % 3];
-      case DirectorStyle.TRACKSIDE_SPECTATOR_TV:
-        return [CameraMode.TRACKSIDE_TELEPHOTO, CameraMode.TRACKSIDE_APEX, CameraMode.SPECTATOR_TRACKSIDE][instanceId % 3];
-      case DirectorStyle.TIKTOK_REELS_VIRAL:
-        return [CameraMode.VERTICAL_PORTRAIT_OPTIMIZED, CameraMode.LOW_GROUND, CameraMode.BEHIND][instanceId % 3];
-      case DirectorStyle.APEX_DUEL_TACTICAL:
-        return [CameraMode.OVERTAKE_ACTION, CameraMode.MULTI_CAR_OVERTAKE_WIDE, CameraMode.SIDE_CHASE_MULTI][instanceId % 3];
-      case DirectorStyle.F1_LIVE_SHOW_50_50:
-      default:
-        return [CameraMode.CHOPPER_HELI_CHASE, CameraMode.MULTI_CAR_PACK_CHASE, CameraMode.MULTI_CAR_OVERTAKE_WIDE, CameraMode.TRACKSIDE_TELEPHOTO][instanceId % 4];
-    }
-  }
+  // =========================================================================
+  // =========================================================================
+  // 1. DANH MỤC GÓC QUAY TRUYỀN HÌNH BAO QUÁT NHIỀU XE (BROADCAST MULTI-CAR COVERAGE)
+  // CHIẾM 30% THỜI LƯỢNG - Chuẩn phát sóng Live Show F1 / Super GT quốc tế
+  // Thời lượng lưu khung hình: 5.5 đến 7.5 giây giúp mắt người xem cảm nhận trọn vẹn cục diện đường đua
+  // =========================================================================
+  public static readonly BROADCAST_MULTI_CAR_MODES: CameraMode[] = [
+    CameraMode.CHOPPER_HELI_CHASE,          // Trực thăng truyền hình (Helicam) lượn trên cao 35m
+    CameraMode.MULTI_CAR_PACK_CHASE,        // Bám đuôi đoàn xe từ trên cao 35–50m bao quát cùng lúc 5 đến 15 xe đang so kè
+    CameraMode.PANORAMIC,                   // Toàn cảnh góc rộng (Panoramic / Jib Crane) từ đài cao
+    CameraMode.TRACKSIDE_TELEPHOTO,         // Ống kính Telephoto 85mm ven đường lia máy theo đoàn xe vụt qua
+    CameraMode.MULTI_CAR_FRONT_FACING,      // Đón đầu trực diện đoàn xe
+  ];
 
   // =========================================================================
-  // 7 HỆ THỐNG ĐẠO DIỄN ĐIỆN ẢNH (7 AI CAMERA DIRECTOR PROFILES)
+  // 2. DANH MỤC GÓC QUAY ĐIỆN ẢNH ĐIỂM XUYẾT (CINEMATIC ACCENTS)
+  // CHIẾM 30% THỜI LƯỢNG - Cận cảnh xé gió tạo cao trào tốc độ
+  // Thời lượng cắt nhanh: 3.5 đến 4.5 giây tạo cao trào tốc độ rồi trả ngay về góc bao quát nhiều xe
   // =========================================================================
-
-  // --- 1. F1 Live Show 50/50 (Giữ nguyên chuẩn phát sóng Live Show 50% Bao quát / 50% Cận cảnh) ---
-  public static readonly F1_BROADCAST_50: CameraMode[] = [
-    CameraMode.CHOPPER_HELI_CHASE,
-    CameraMode.MULTI_CAR_PACK_CHASE,
-    CameraMode.MULTI_CAR_OVERTAKE_WIDE,
-    CameraMode.MULTI_CAR_FRONT_FACING,
-    CameraMode.TRACKSIDE_TELEPHOTO,
-    CameraMode.PANORAMIC,
-    CameraMode.SKY_DRONE_BROADCAST,
-    CameraMode.SIDE_CHASE_MULTI,
-    CameraMode.TRACKSIDE_APEX,
-    CameraMode.SPECTATOR_TRACKSIDE,
-    CameraMode.PIT_WALL_BROADCAST,
-    CameraMode.VERTICAL_PORTRAIT_OPTIMIZED,
-  ];
-  public static readonly F1_CINEMATIC_50: CameraMode[] = [
-    CameraMode.LOW_GROUND,
-    CameraMode.BEHIND,
-    CameraMode.HOOD,
-    CameraMode.COCKPIT_FIRST_PERSON,
-    CameraMode.BUMPER_FIRST_PERSON,
-    CameraMode.OVERTAKE_ACTION,
-    CameraMode.COLLISION_DRIFT,
+  public static readonly CINEMATIC_ACCENT_MODES: CameraMode[] = [
+    CameraMode.LOW_GROUND,                  // Sát mặt đường giữa vạch tim đường (lùi 10m) xé gió
+    CameraMode.COCKPIT_FIRST_PERSON,        // Buồng lái F1 (Cockpit)
+    CameraMode.HOOD,                        // Nắp capo (Hood) nhìn thẳng đường đua
+    CameraMode.BUMPER_FIRST_PERSON,         // Cản trước (Bumper) xé gió siêu tốc
   ];
 
-  // --- 2. Hollywood Action & Thriller (75% Cận cảnh xé gió, cắt dồn dập 2.2s - 4.0s) ---
-  public static readonly HOLLYWOOD_CLOSEUP: CameraMode[] = [
-    CameraMode.BUMPER_FIRST_PERSON,
-    CameraMode.LOW_GROUND,
-    CameraMode.OVERTAKE_ACTION,
-    CameraMode.COLLISION_DRIFT,
-    CameraMode.WING_REAR_LOOK,
-    CameraMode.COCKPIT_FIRST_PERSON,
-    CameraMode.TUNNEL_CEILING_FAST,
+  // =========================================================================
+  // 3. DANH MỤC GÓC QUAY HÀNH ĐỘNG & SO KÈ CHIẾN THUẬT (TACTICAL ACTION DUELS)
+  // CHIẾM 40% THỜI LƯỢNG - Lưu 4.5s - 6.0s bám sát các pha so kè và vượt mặt kịch tính
+  // =========================================================================
+  public static readonly TACTICAL_ACTION_MODES: CameraMode[] = [
+    CameraMode.SKY_DRONE_BROADCAST,         // Racing Drone / Flycam bay lướt trên cao bao quát đoàn xe
+    CameraMode.TRACKSIDE_APEX,              // Trạm quay đỉnh góc cua Apex đón đoàn xe ôm cua
+    CameraMode.MULTI_CAR_OVERTAKE_WIDE,     // Toàn cảnh so kè nhiều xe từ trên cao
+    CameraMode.SIDE_CHASE_MULTI,            // Hông xa so kè nhiều xe đua song song
+    CameraMode.OVERTAKE_ACTION,             // Cận cảnh hành động vượt mặt
+    CameraMode.BEHIND,                      // Cận cảnh phía sau xe
+    CameraMode.SPECTATOR_TRACKSIDE,         // Góc nhìn khán đài lia theo đoàn xe
   ];
-  public static readonly HOLLYWOOD_WIDE: CameraMode[] = [
-    CameraMode.MULTI_CAR_OVERTAKE_WIDE,
-    CameraMode.SIDE_CHASE_MULTI,
-    CameraMode.MULTI_CAR_FRONT_FACING,
-  ];
-
-  // --- 3. Sky Master Aerial & Drone Symphony (80% Trên không, giữ mượt 6.5s - 9.5s) ---
-  public static readonly SKY_MASTER_AIR: CameraMode[] = [
-    CameraMode.CHOPPER_HELI_CHASE,
-    CameraMode.SKY_DRONE_BROADCAST,
-    CameraMode.PANORAMIC,
-    CameraMode.MULTI_CAR_PACK_CHASE,
-    CameraMode.MULTI_CAR_OVERTAKE_WIDE,
-  ];
-  public static readonly SKY_MASTER_GROUND: CameraMode[] = [
-    CameraMode.TRACKSIDE_TELEPHOTO,
-    CameraMode.SPECTATOR_TRACKSIDE,
-    CameraMode.PIT_WALL_BROADCAST,
-  ];
-
-  // --- 4. Pure Cockpit Sim-Racer POV (70% First-Person POV, giữ 4.5s - 7.0s) ---
-  public static readonly COCKPIT_SIM_POV: CameraMode[] = [
-    CameraMode.COCKPIT_FIRST_PERSON,
-    CameraMode.HOOD,
-    CameraMode.BUMPER_FIRST_PERSON,
-    CameraMode.WING_REAR_LOOK,
-  ];
-  public static readonly COCKPIT_SIM_CHASE: CameraMode[] = [
-    CameraMode.BEHIND,
-    CameraMode.LOW_GROUND,
-    CameraMode.OVERTAKE_ACTION,
-  ];
-
-  // --- 5. Trackside Grandstand & Spectator TV (85% Trạm quay tĩnh ven đường & Apex, 3.2s - 5.5s) ---
-  public static readonly TRACKSIDE_STATION_MODES: CameraMode[] = [
-    CameraMode.TRACKSIDE_TELEPHOTO,
-    CameraMode.TRACKSIDE_APEX,
-    CameraMode.SPECTATOR_TRACKSIDE,
-    CameraMode.PASSING_STATIONARY,
-    CameraMode.PIT_WALL_BROADCAST,
-    CameraMode.KERB_CAM_GROUND,
-  ];
-  public static readonly TRACKSIDE_CHASE_MODES: CameraMode[] = [
-    CameraMode.MULTI_CAR_PACK_CHASE,
-    CameraMode.PANORAMIC,
-  ];
-
-  // --- 6. TikTok & Reels Vertical Viral Speed (70% 9:16 dọc & tim đường, 30% hành động viral 2.8s - 4.5s) ---
-  public static readonly TIKTOK_PORTRAIT_MODES: CameraMode[] = [
-    CameraMode.VERTICAL_PORTRAIT_OPTIMIZED,
-    CameraMode.LOW_GROUND,
-    CameraMode.BEHIND,
-    CameraMode.MULTI_CAR_FRONT_FACING,
-  ];
-  public static readonly TIKTOK_VIRAL_ACTION: CameraMode[] = [
-    CameraMode.COLLISION_DRIFT,
-    CameraMode.OVERTAKE_ACTION,
-    CameraMode.BUMPER_FIRST_PERSON,
-  ];
-
-  // --- 7. Apex Duel & Tactical Dogfight (80% So kè đối đầu P1-P2-P3, 20% Bám đuổi 2.8s - 5.0s) ---
-  public static readonly APEX_DUEL_MODES: CameraMode[] = [
-    CameraMode.OVERTAKE_ACTION,
-    CameraMode.MULTI_CAR_OVERTAKE_WIDE,
-    CameraMode.SIDE_CHASE_MULTI,
-    CameraMode.MULTI_CAR_FRONT_FACING,
-    CameraMode.TRACKSIDE_APEX,
-    CameraMode.COLLISION_DRIFT,
-  ];
-  public static readonly APEX_DUEL_CHASE: CameraMode[] = [
-    CameraMode.LOW_GROUND,
-    CameraMode.BEHIND,
-  ];
-
-  // Legacy compatibility aliases
-  public static readonly BROADCAST_MULTI_CAR_MODES = CameraDirector.F1_BROADCAST_50;
-  public static readonly CINEMATIC_ACCENT_MODES = CameraDirector.F1_CINEMATIC_50;
-  public static readonly TACTICAL_ACTION_MODES = CameraDirector.APEX_DUEL_MODES;
 
   // Trạm quay phim ven đường tĩnh (Trackside Static Station) cho cảm giác truyền hình F1 chân thực
   private tracksideStationPos: THREE.Vector3 = new THREE.Vector3();
@@ -201,13 +98,6 @@ export class CameraDirector {
   }
 
   setCameraMode(mode: CameraMode, manualLock: boolean = true) {
-    // Loại bỏ góc quay 360 độ và góc chắn bùn theo yêu cầu người dùng
-    if (mode === CameraMode.CINEMATIC_ORBIT || (mode as any) === 'CINEMATIC_ORBIT') {
-      mode = CameraMode.BEHIND;
-    }
-    if (mode === CameraMode.FENDER_WHEEL_LOOK || (mode as any) === 'FENDER_WHEEL_LOOK') {
-      mode = CameraMode.HOOD;
-    }
     this.currentMode = mode;
     this.isManualLocked = manualLock;
     this.dwellTimer = 0;
@@ -251,109 +141,68 @@ export class CameraDirector {
     // Determine Leader (P1)
     const leaderCar = cars.find(c => c.state.rank === 1) || cars[0];
 
-    // Priority event-driven director switches theo từng phong cách Đạo Diễn Điện Ảnh
+    // Priority event-driven director switches (Chuẩn đạo diễn truyền hình thể thao F1 Live Show)
+    // TỶ LỆ CHUẨN LIVE SHOW (78% Broadcast Multi-Car / 22% Cinematic Accents)
+    // Giúp khán giả luôn theo dõi trọn vẹn diễn biến đoàn đua, không bị rối mắt
     if (autoDirectorEnabled && !this.isManualLocked) {
-      if (collisionCarId && this.dwellTimer >= 4.0) {
-        let chosenMode: CameraMode;
-        let switchDuration = 4.5;
-
-        switch (this.directorStyle) {
-          case DirectorStyle.HOLLYWOOD_ACTION_THRILLER:
-            // Cận cảnh cháy nổ khói lốp kịch tính
-            chosenMode = Math.random() < 0.7 ? CameraMode.COLLISION_DRIFT : CameraMode.LOW_GROUND;
-            switchDuration = 2.8 + Math.random() * 1.0;
-            break;
-          case DirectorStyle.SKY_MASTER_AERIAL:
-            // Bao quát từ trên không
-            chosenMode = Math.random() < 0.6 ? CameraMode.CHOPPER_HELI_CHASE : CameraMode.SKY_DRONE_BROADCAST;
-            switchDuration = 6.0 + Math.random() * 2.0;
-            break;
-          case DirectorStyle.PURE_COCKPIT_SIM_RACER:
-            chosenMode = Math.random() < 0.6 ? CameraMode.COCKPIT_FIRST_PERSON : CameraMode.BUMPER_FIRST_PERSON;
-            switchDuration = 4.0 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.TRACKSIDE_SPECTATOR_TV:
-            chosenMode = Math.random() < 0.6 ? CameraMode.TRACKSIDE_APEX : CameraMode.TRACKSIDE_TELEPHOTO;
-            switchDuration = 3.5 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.TIKTOK_REELS_VIRAL:
-            chosenMode = Math.random() < 0.6 ? CameraMode.COLLISION_DRIFT : CameraMode.VERTICAL_PORTRAIT_OPTIMIZED;
-            switchDuration = 3.0 + Math.random() * 1.2;
-            break;
-          case DirectorStyle.APEX_DUEL_TACTICAL:
-            chosenMode = Math.random() < 0.6 ? CameraMode.TRACKSIDE_APEX : CameraMode.COLLISION_DRIFT;
-            switchDuration = 3.5 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.F1_LIVE_SHOW_50_50:
-          default: {
-            // Chuẩn Live Show 50/50: Đỉnh cua Apex hoặc cận cảnh Drift
-            const isApex = Math.random() < 0.50;
-            chosenMode = isApex ? CameraMode.TRACKSIDE_APEX : CameraMode.COLLISION_DRIFT;
-            switchDuration = isApex ? (5.0 + Math.random() * 1.5) : (3.5 + Math.random() * 1.2);
-            break;
-          }
-        }
-
-        this.currentMode = chosenMode;
+      if (collisionCarId && this.dwellTimer >= 5.0) {
+        // Sự kiện va chạm/drift: 78% góc toàn cảnh đỉnh cua/trực thăng, 22% cận cảnh drift bốc khói
+        const collisionBroadModes = [
+          CameraMode.TRACKSIDE_APEX,          // Trạm quay đỉnh góc cua Apex đón xe ôm cua
+          CameraMode.MULTI_CAR_OVERTAKE_WIDE, // Toàn cảnh so kè nhiều xe từ trên cao
+          CameraMode.CHOPPER_HELI_CHASE,      // Trực thăng trên cao bắt trọn va chạm
+        ];
+        const collisionAccentModes = [
+          CameraMode.COLLISION_DRIFT,         // Điện ảnh: Cận cảnh drift & khói
+          CameraMode.LOW_GROUND,              // Điện ảnh: Sát mặt đường giữa vạch tim đường
+        ];
+        // 78% góc truyền hình bao quát, 22% góc điện ảnh cận cảnh
+        const isBroad = Math.random() < 0.78;
+        this.currentMode = isBroad
+          ? collisionBroadModes[Math.floor(Math.random() * collisionBroadModes.length)]
+          : collisionAccentModes[Math.floor(Math.random() * collisionAccentModes.length)];
         this.currentTargetCarId = collisionCarId;
         this.dwellTimer = 0;
-        this.nextSwitchTime = switchDuration;
+        this.nextSwitchTime = isBroad ? (5.5 + Math.random() * 2.0) : (3.5 + Math.random() * 1.0);
         this.hasStationPos = false;
         this.hasSpectatorPos = false;
         this.isFirstFrame = true; // Cắt góc chuẩn truyền hình F1 Live Show tức thì, không lia giật
-      } else if (activeOvertakeCarId && this.dwellTimer >= 4.0) {
-        let chosenMode: CameraMode;
-        let switchDuration = 4.5;
-
-        switch (this.directorStyle) {
-          case DirectorStyle.HOLLYWOOD_ACTION_THRILLER:
-            chosenMode = Math.random() < 0.6 ? CameraMode.OVERTAKE_ACTION : CameraMode.BUMPER_FIRST_PERSON;
-            switchDuration = 2.5 + Math.random() * 1.2;
-            break;
-          case DirectorStyle.SKY_MASTER_AERIAL:
-            chosenMode = Math.random() < 0.6 ? CameraMode.MULTI_CAR_OVERTAKE_WIDE : CameraMode.CHOPPER_HELI_CHASE;
-            switchDuration = 6.5 + Math.random() * 2.0;
-            break;
-          case DirectorStyle.PURE_COCKPIT_SIM_RACER:
-            chosenMode = Math.random() < 0.6 ? CameraMode.COCKPIT_FIRST_PERSON : CameraMode.HOOD;
-            switchDuration = 4.5 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.TRACKSIDE_SPECTATOR_TV:
-            chosenMode = Math.random() < 0.6 ? CameraMode.TRACKSIDE_TELEPHOTO : CameraMode.PIT_WALL_BROADCAST;
-            switchDuration = 3.5 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.TIKTOK_REELS_VIRAL:
-            chosenMode = Math.random() < 0.6 ? CameraMode.VERTICAL_PORTRAIT_OPTIMIZED : CameraMode.OVERTAKE_ACTION;
-            switchDuration = 3.0 + Math.random() * 1.2;
-            break;
-          case DirectorStyle.APEX_DUEL_TACTICAL:
-            chosenMode = Math.random() < 0.5 ? CameraMode.OVERTAKE_ACTION : CameraMode.SIDE_CHASE_MULTI;
-            switchDuration = 3.0 + Math.random() * 1.5;
-            break;
-          case DirectorStyle.F1_LIVE_SHOW_50_50:
-          default: {
-            // Chuẩn Live Show 50/50: Toàn cảnh so kè hoặc cận cảnh vượt mặt
-            const isWide = Math.random() < 0.50;
-            chosenMode = isWide ? CameraMode.MULTI_CAR_OVERTAKE_WIDE : CameraMode.OVERTAKE_ACTION;
-            switchDuration = isWide ? (5.0 + Math.random() * 1.8) : (3.5 + Math.random() * 1.2);
-            break;
-          }
-        }
-
-        this.currentMode = chosenMode;
+      } else if (activeOvertakeCarId && this.dwellTimer >= 5.0) {
+        // Sự kiện vượt xe: 78% góc truyền hình bao quát nhiều xe, 22% cận cảnh hành động
+        const overtakeBroadModes = [
+          CameraMode.MULTI_CAR_OVERTAKE_WIDE, // Toàn cảnh so kè nhiều xe từ trên cao
+          CameraMode.MULTI_CAR_PACK_CHASE,    // Bám đuôi đoàn xe 35-50m trên cao
+          CameraMode.MULTI_CAR_FRONT_FACING,  // Đón đầu đoàn xe đua trực diện
+          CameraMode.CHOPPER_HELI_CHASE,      // Trực thăng truyền hình trên cao
+          CameraMode.SIDE_CHASE_MULTI,        // Hông xa so kè nhiều xe song song
+          CameraMode.TRACKSIDE_TELEPHOTO,     // Telephoto 85mm ven đường lia theo đoàn xe
+          CameraMode.PANORAMIC,               // Toàn cảnh trường đua từ đài cao
+        ];
+        const overtakeCinematicModes = [
+          CameraMode.OVERTAKE_ACTION,         // Cận cảnh vượt mặt
+          CameraMode.LOW_GROUND,              // Sát mặt đường giữa vạch lùi 10m
+          CameraMode.BEHIND,                  // Phía sau xe
+          CameraMode.BUMPER_FIRST_PERSON,     // Cản trước xé gió
+          CameraMode.COCKPIT_FIRST_PERSON,    // Buồng lái F1
+        ];
+        // 78% góc truyền hình bao quát nhiều xe, 22% cận cảnh hành động
+        const isBroad = Math.random() < 0.78;
+        this.currentMode = isBroad
+          ? overtakeBroadModes[Math.floor(Math.random() * overtakeBroadModes.length)]
+          : overtakeCinematicModes[Math.floor(Math.random() * overtakeCinematicModes.length)];
         this.currentTargetCarId = activeOvertakeCarId;
         this.dwellTimer = 0;
-        this.nextSwitchTime = switchDuration;
+        this.nextSwitchTime = isBroad ? (5.5 + Math.random() * 2.0) : (3.5 + Math.random() * 1.0);
         this.hasStationPos = false;
         this.hasSpectatorPos = false;
         this.isFirstFrame = true; // Cắt góc chuẩn truyền hình F1 Live Show tức thì
       } else if (this.dwellTimer >= this.nextSwitchTime) {
-        // Chuyển góc quay tự động theo phong cách đạo diễn đang chọn
+        // Chuyển góc quay tự động chuẩn F1 Live Show
         this.cycleNextCinematicMode();
         this.dwellTimer = 0;
         this.hasStationPos = false;
         this.hasGrandstandPos = false;
-        this.isFirstFrame = true; // Cắt góc tức thì
+        this.isFirstFrame = true; // Cắt góc chuẩn truyền hình F1 Live Show tức thì
       }
     }
 
@@ -377,6 +226,7 @@ export class CameraDirector {
       this.currentMode === CameraMode.HOOD ||
       this.currentMode === CameraMode.COCKPIT_FIRST_PERSON ||
       this.currentMode === CameraMode.BUMPER_FIRST_PERSON ||
+      this.currentMode === CameraMode.FENDER_WHEEL_LOOK ||
       this.currentMode === CameraMode.WING_REAR_LOOK
     );
 
@@ -387,7 +237,8 @@ export class CameraDirector {
       this.currentMode === CameraMode.SIDE_PROFILE ||
       this.currentMode === CameraMode.OVERTAKE_ACTION ||
       this.currentMode === CameraMode.COLLISION_DRIFT ||
-      this.currentMode === CameraMode.VERTICAL_PORTRAIT_OPTIMIZED
+      this.currentMode === CameraMode.VERTICAL_PORTRAIT_OPTIMIZED ||
+      this.currentMode === CameraMode.CINEMATIC_ORBIT
     );
 
     // Hướng xoay mượt mà khóa đường chân trời cho góc quay bám đuôi (Gimbal Horizon-Locked Yaw)
@@ -626,12 +477,13 @@ export class CameraDirector {
       }
 
       // =========================================================================
-      // 14. CAMERA CHẮN BÙN (ĐÃ LOẠI BỎ THEO YÊU CẦU -> CHUYỂN HOOD)
+      // 14. CAMERA CHẮN BÙN NHÌN LỐP VÀ HÔNG XE (FENDER_WHEEL_LOOK)
+      // Góc bám lốp xe trước bên hông, thấy rõ bánh xe quay tít mù khói và mặt đường trôi
       // =========================================================================
       case CameraMode.FENDER_WHEEL_LOOK: {
         camSmoothSpeed = 0;
-        idealPos.copy(carPos).add(new THREE.Vector3(0, 0.95, 1.1).applyQuaternion(carQuat));
-        lookTarget.copy(carPos).add(new THREE.Vector3(0, 0.90, 40.0).applyQuaternion(carQuat));
+        idealPos.copy(carPos).add(new THREE.Vector3(1.85, 0.75, 1.25).applyQuaternion(carQuat));
+        lookTarget.copy(carPos).add(new THREE.Vector3(0.8, 0.45, -1.8).applyQuaternion(carQuat));
         break;
       }
 
@@ -774,14 +626,18 @@ export class CameraDirector {
         break;
       }
 
-      // 10. Xoay 360 Vòng (ĐÃ LOẠI BỎ THEO YÊU CẦU -> CHUYỂN VỀ BEHIND CỐ ĐỊNH)
+      // 10. Xoay 360 Vòng: Quỹ đạo xoay mượt mà liên tục quanh xe theo hệ trục cục bộ
       case CameraMode.CINEMATIC_ORBIT: {
         camSmoothSpeed = 0;
-        const dist = 13.0; 
-        const height = 2.8; 
-        idealPos.copy(carPos).addScaledVector(this.smoothHeading, -dist).addScaledVector(up, height);
-        idealPos.y = Math.max(idealPos.y, carPos.y + 1.4);
-        lookTarget.copy(carPos).addScaledVector(this.smoothHeading, 22.0).addScaledVector(up, 1.1);
+        const orbitRadius = 7.5;
+        const orbitHeight = 2.2 + Math.sin(this.orbitAngle * 0.8) * 0.35;
+        const orbitX = Math.sin(this.orbitAngle) * orbitRadius;
+        const orbitZ = Math.cos(this.orbitAngle) * orbitRadius;
+        idealPos.copy(carPos)
+          .addScaledVector(smoothRight, orbitX)
+          .addScaledVector(this.smoothHeading, orbitZ)
+          .addScaledVector(up, orbitHeight);
+        lookTarget.copy(carPos).addScaledVector(up, 0.75);
         break;
       }
 
@@ -894,7 +750,7 @@ export class CameraDirector {
     } else if (this.currentMode === CameraMode.TUNNEL_CEILING_FAST) {
       modeBaseFov = 78.0;
       speedFovBoost = Math.pow(speedRatio, 1.1) * 18.0;
-    } else if (this.currentMode === CameraMode.WING_REAR_LOOK) {
+    } else if (this.currentMode === CameraMode.FENDER_WHEEL_LOOK || this.currentMode === CameraMode.WING_REAR_LOOK) {
       modeBaseFov = 76.0;
       speedFovBoost = Math.pow(speedRatio, 1.1) * 18.0;
     }
@@ -950,115 +806,37 @@ export class CameraDirector {
   }
 
   /**
-   * Chuyển đổi góc quay tự động chuẩn xác theo 7 Phong Cách Đạo Diễn Điện Ảnh (DirectorStyle):
-   * 1. F1_LIVE_SHOW_50_50: 50% Bao quát (5.0s-7.0s) / 50% Cận cảnh (3.5s-5.0s)
-   * 2. HOLLYWOOD_ACTION_THRILLER: 75% Cận cảnh xé gió (2.2s-3.8s) / 25% Toàn cảnh (3.0s-4.2s)
-   * 3. SKY_MASTER_AERIAL: 80% Trên không (6.5s-9.5s) / 20% Ven đường (4.5s-6.0s)
-   * 4. PURE_COCKPIT_SIM_RACER: 70% POV Buồng lái/Mui/Cản (4.8s-7.5s) / 30% Đuổi sát (4.0s-5.5s)
-   * 5. TRACKSIDE_SPECTATOR_TV: 85% Trạm quay tĩnh ven đường & Apex (3.2s-5.5s) / 15% Pack Chase (4.5s-6.0s)
-   * 6. TIKTOK_REELS_VIRAL: 70% 9:16 Dọc & Tim đường (2.8s-4.5s) / 30% Hành động viral (2.5s-4.0s)
-   * 7. APEX_DUEL_TACTICAL: 80% So kè đối đầu P1-P3 (2.8s-5.0s) / 20% Đuổi sát (3.5s-5.0s)
+   * Chuyển đổi góc quay tự động theo chuẩn đạo diễn thể thao F1 Live Show:
+   * - 30% Thời lượng – Góc Truyền hình Bao quát Nhiều Xe (Broadcast Multi-Car): lưu 5.5s - 7.5s
+   * - 30% Thời lượng – Góc Điện ảnh Điểm xuyết (Cinematic Accents): cắt nhanh 3.5s - 4.5s rồi trả ngay về góc bao quát
+   * - 40% Thời lượng – Góc Hành Động & So Kè Chiến Thuật (Tactical Action Duels): giữ 4.5s - 6.0s
    */
   private cycleNextCinematicMode() {
     let chosenPool: CameraMode[];
     let nextDuration: number;
 
-    switch (this.directorStyle) {
-      case DirectorStyle.HOLLYWOOD_ACTION_THRILLER: {
-        // 75% Cận cảnh xé gió & 25% Toàn cảnh chớp nhoáng
-        if (Math.random() < 0.75) {
-          chosenPool = CameraDirector.HOLLYWOOD_CLOSEUP;
-          nextDuration = 2.2 + Math.random() * 1.6;
-        } else {
-          chosenPool = CameraDirector.HOLLYWOOD_WIDE;
-          nextDuration = 3.0 + Math.random() * 1.2;
-        }
-        break;
-      }
-
-      case DirectorStyle.SKY_MASTER_AERIAL: {
-        // 80% Trực thăng & Drone toàn cảnh trên không & 20% Ven đường
-        if (Math.random() < 0.80) {
-          chosenPool = CameraDirector.SKY_MASTER_AIR;
-          nextDuration = 6.5 + Math.random() * 3.0;
-        } else {
-          chosenPool = CameraDirector.SKY_MASTER_GROUND;
-          nextDuration = 4.5 + Math.random() * 1.5;
-        }
-        break;
-      }
-
-      case DirectorStyle.PURE_COCKPIT_SIM_RACER: {
-        // 70% POV Buồng lái & 30% Bám đuổi
-        if (Math.random() < 0.70) {
-          chosenPool = CameraDirector.COCKPIT_SIM_POV;
-          nextDuration = 4.8 + Math.random() * 2.7;
-        } else {
-          chosenPool = CameraDirector.COCKPIT_SIM_CHASE;
-          nextDuration = 4.0 + Math.random() * 1.5;
-        }
-        break;
-      }
-
-      case DirectorStyle.TRACKSIDE_SPECTATOR_TV: {
-        // 85% Trạm quay tĩnh ven đường & 15% Pack Chase
-        if (Math.random() < 0.85) {
-          chosenPool = CameraDirector.TRACKSIDE_STATION_MODES;
-          nextDuration = 3.2 + Math.random() * 2.3;
-        } else {
-          chosenPool = CameraDirector.TRACKSIDE_CHASE_MODES;
-          nextDuration = 4.5 + Math.random() * 1.5;
-        }
-        break;
-      }
-
-      case DirectorStyle.TIKTOK_REELS_VIRAL: {
-        // 70% 9:16 Dọc & Tim đường & 30% Hành động viral
-        if (Math.random() < 0.70) {
-          chosenPool = CameraDirector.TIKTOK_PORTRAIT_MODES;
-          nextDuration = 2.8 + Math.random() * 1.7;
-        } else {
-          chosenPool = CameraDirector.TIKTOK_VIRAL_ACTION;
-          nextDuration = 2.5 + Math.random() * 1.5;
-        }
-        break;
-      }
-
-      case DirectorStyle.APEX_DUEL_TACTICAL: {
-        // 80% So kè đối đầu P1-P3 & 20% Đuổi sát
-        if (Math.random() < 0.80) {
-          chosenPool = CameraDirector.APEX_DUEL_MODES;
-          nextDuration = 2.8 + Math.random() * 2.2;
-        } else {
-          chosenPool = CameraDirector.APEX_DUEL_CHASE;
-          nextDuration = 3.5 + Math.random() * 1.5;
-        }
-        break;
-      }
-
-      case DirectorStyle.F1_LIVE_SHOW_50_50:
-      default: {
-        // Chuẩn phát sóng Live Show F1 50/50:
-        // 50% Góc truyền hình bao quát nhiều xe (5.0s - 7.0s)
-        // 50% Góc điện ảnh điểm xuyết (3.5s - 5.0s)
-        if (Math.random() < 0.50) {
-          chosenPool = CameraDirector.F1_BROADCAST_50;
-          nextDuration = 5.0 + Math.random() * 2.0;
-        } else {
-          chosenPool = CameraDirector.F1_CINEMATIC_50;
-          nextDuration = 3.5 + Math.random() * 1.5;
-        }
-        break;
-      }
+    const roll = Math.random();
+    if (roll < 0.30) {
+      chosenPool = CameraDirector.BROADCAST_MULTI_CAR_MODES;
+      // 30% Thời lượng – Góc Truyền hình Bao quát Nhiều Xe: lưu 5.5 đến 7.5 giây
+      nextDuration = 5.5 + Math.random() * 2.0;
+    } else if (roll < 0.60) {
+      chosenPool = CameraDirector.CINEMATIC_ACCENT_MODES;
+      // 30% Thời lượng – Góc Điện ảnh Điểm xuyết: cắt nhanh 3.5 đến 4.5 giây tạo cao trào tốc độ
+      nextDuration = 3.5 + Math.random() * 1.0;
+    } else {
+      chosenPool = CameraDirector.TACTICAL_ACTION_MODES;
+      // 40% Thời lượng – Góc Hành Động & So Kè Chiến Thuật: giữ 4.5 đến 6.0 giây
+      nextDuration = 4.5 + Math.random() * 1.5;
     }
 
-    // Triệt tiêu hoàn toàn góc quay 360 độ và góc chắn bùn theo yêu cầu người dùng
-    const sanitizedPool = chosenPool.filter(m => m !== CameraMode.CINEMATIC_ORBIT && m !== CameraMode.FENDER_WHEEL_LOOK);
-    const available = sanitizedPool.filter(m => m !== this.currentMode);
+    const available = chosenPool.filter(m => m !== this.currentMode);
     if (available.length > 0) {
       this.currentMode = available[Math.floor(Math.random() * available.length)];
     } else {
-      this.currentMode = sanitizedPool[Math.floor(Math.random() * sanitizedPool.length)] || CameraMode.BEHIND;
+      this.currentMode = CameraDirector.BROADCAST_MULTI_CAR_MODES[
+        Math.floor(Math.random() * CameraDirector.BROADCAST_MULTI_CAR_MODES.length)
+      ];
     }
     this.nextSwitchTime = nextDuration;
     this.isFirstFrame = true; // Cắt góc chuẩn truyền hình F1 Live Show tức thì, không lia giật

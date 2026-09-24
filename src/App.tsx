@@ -21,9 +21,7 @@ import {
   LogMessage,
   SystemConfig,
   SystemHardwareStats,
-  VideoRecordJob,
-  DirectorStyle,
-  DIRECTOR_STYLE_LIST
+  VideoRecordJob
 } from './types';
 
 export default function App() {
@@ -310,22 +308,6 @@ export default function App() {
     addLog('info', `Đã bật lại chế độ Đạo diễn tự động đổi góc cho Instance #${instanceId}`, instanceId);
   };
 
-  const handleSelectDirectorStyle = (instanceId: number, style: DirectorStyle) => {
-    if (!engineRef.current) return;
-    engineRef.current.setInstanceDirectorStyle(instanceId, style);
-    const styleInfo = DIRECTOR_STYLE_LIST.find(s => s.id === style);
-    addLog('info', `Đã chuyển Instance #${instanceId} sang phong cách Đạo Diễn: ${styleInfo?.name || style}`, instanceId);
-  };
-
-  const handleCycleDirectorStyle = (instanceId: number) => {
-    if (!engineRef.current) return;
-    engineRef.current.cycleInstanceDirectorStyle(instanceId);
-    const inst = engineRef.current.instances.get(instanceId);
-    const currentStyle = inst?.cameraDirector.directorStyle;
-    const styleInfo = DIRECTOR_STYLE_LIST.find(s => s.id === currentStyle);
-    addLog('info', `Đã đổi Instance #${instanceId} sang phong cách Đạo Diễn: ${styleInfo?.name || currentStyle}`, instanceId);
-  };
-
   const handleSelectRoadLayout = (instanceId: number, layoutId: any) => {
     if (!engineRef.current) return;
     engineRef.current.setInstanceRoadLayout(instanceId, layoutId);
@@ -482,7 +464,6 @@ export default function App() {
             activeCount={config.instanceCount}
             onInspectInstance={id => setInspectInstanceId(id)}
             onQuickSwitchCamera={handleSelectCamera}
-            onCycleDirectorStyle={handleCycleDirectorStyle}
           />
 
           {/* Thanh trạng thái dưới đáy */}
@@ -519,14 +500,13 @@ export default function App() {
       </div>
 
       {/* 3. Các cửa sổ Modal */}
-      {/* Modal xem chi tiết và tự chọn 7 phong cách đạo diễn, 19 góc camera, 20 đường đua, 20 môi trường */}
+      {/* Modal xem chi tiết và tự chọn 30 góc camera, 20 đường đua, 20 môi trường */}
       {inspectedInstance && (
         <InstanceDetailModal
           instance={inspectedInstance}
           onClose={() => setInspectInstanceId(null)}
           onSelectCamera={handleSelectCamera}
           onUnlockCamera={handleUnlockCamera}
-          onSelectDirectorStyle={handleSelectDirectorStyle}
           onSelectRoadLayout={handleSelectRoadLayout}
           onSelectBiome={handleSelectBiome}
           onForceRerollSeed={handleForceRerollSeed}
