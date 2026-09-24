@@ -36,9 +36,9 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
   const classicCameras: { mode: CameraMode; label: string; desc: string; tag: string }[] = [
     {
       mode: CameraMode.BEHIND,
-      label: '1. Phía Sau Xe (Cao 7.8m - Lùi 18m)',
-      desc: 'Nâng cao 7.8m, lùi sau 18m, khóa cố định góc nhìn tiến thẳng không bao giờ xoay ngược',
-      tag: 'Sau Xe 18m - Cao 7.8m'
+      label: '1. Phía Sau Xe (Xa 100m)',
+      desc: 'Lùi xa về sau thêm 100m, trên cao bao quát toàn bộ đoàn xe phía trước',
+      tag: 'Sau Xe 100m'
     },
     {
       mode: CameraMode.MULTI_CAR_PACK_CHASE,
@@ -160,9 +160,9 @@ export const InstanceDetailModal: React.FC<InstanceDetailModalProps> = ({
     },
     {
       mode: CameraMode.VERTICAL_PORTRAIT_OPTIMIZED,
-      label: '12. Khung Hình Dọc 9:16 (Cố Định Giữa Màn Hình)',
-      desc: 'Cố định xe chính giữa màn hình dọc 9:16, triệt tiêu xoay lắc trôi dạt (TikTok / Shorts / Reels)',
-      tag: 'Cố Định 9:16'
+      label: '12. Khung Hình Dọc 9:16 Truyền Hình',
+      desc: 'Cân chỉnh tỉ lệ vàng chuyên dụng cho định dạng video ngắn Shorts/Reels/TikTok',
+      tag: 'Chuẩn 9:16'
     },
     {
       mode: CameraMode.SPECTATOR_TRACKSIDE,

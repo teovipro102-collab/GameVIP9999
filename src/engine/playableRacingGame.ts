@@ -278,8 +278,8 @@ export class PlayableRacingGame {
     this.trackCurve.arcLengthDivisions = 6000;
     this.totalTrackLength = this.trackCurve.getLength();
 
-    // Road Ribbon Mesh (2400 segments siêu mịn)
-    const segments = 2400;
+    // Road Ribbon Mesh (1200 segments)
+    const segments = 1200;
     const roadHalfWidth = this.trackWidth / 2;
     const positions: number[] = [];
     const uvs: number[] = [];

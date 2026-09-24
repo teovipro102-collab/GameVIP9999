@@ -60,7 +60,7 @@ export const ROAD_LAYOUT_PRESETS: RoadLayoutPreset[] = [
   {
     id: 'CITY_GRID_INTERSECTION',
     name: '11. Ngã Tư Đô Thị Phồn Hoa',
-    description: 'Đường đua phố phường hiện đại với những khúc cua kỹ thuật uốn lượn mềm mại quanh các tòa cao ốc chọc trời.'
+    description: 'Đường đua phố phường xuyên qua những tòa nhà chọc trời và các góc vuông 90 độ.'
   },
   {
     id: 'FOREST_RIVER_MEANDER',
@@ -129,28 +129,28 @@ export const ROAD_LAYOUT_PRESETS: RoadLayoutPreset[] = [
   },
   {
     id: 'CYBER_OCTAGON_VELODROME',
-    name: '25. Vòng Đua Cyber Velodrome',
-    description: 'Trường đua tương lai với các góc bo tròn khí động học phát quang rực rỡ và độ nghiêng lòng chảo êm ái.'
+    name: '25. Bát Giác Cyber Octagon',
+    description: 'Trường đua đa giác 8 cạnh tương lai với tường chắn phát quang và góc vát parabol.'
   },
   {
     id: 'DRAGON_BACK_RIDGELINE',
     name: '26. Sống Lưng Rồng Mây Ngàn',
-    description: 'Cung đường sống lưng rồng nhấp nhô uốn lượn giữa biển mây bồng bềnh và vực sâu thăm thẳm.'
+    description: 'Cung đường sống lưng rồng nhấp nhô giữa biển mây bồng bềnh và vực sâu thăm thẳm.'
   },
   {
     id: 'INFINITY_LOOP_EXPRESS',
     name: '27. Vòng Lặp Vô Cực Infinity (∞)',
-    description: 'Vòng lặp vô cực đan chéo với 2 cầu vượt đa tầng uốn cong nhịp nhàng cho những pha giao thoa thót tim.'
+    description: 'Vòng lặp vô cực đan chéo với 2 cầu vượt đa tầng cho những pha giao thoa thót tim.'
   },
   {
     id: 'DELTA_WING_TRIANGLE',
-    name: '28. Khí Động Học Delta Wing',
-    description: 'Trường đua khí động học với 3 cung bo tròn bán kính lớn mượt mà kết hợp các đoạn thẳng siêu thanh.'
+    name: '28. Tam Giác Tốc Độ Delta Wing',
+    description: 'Trường đua 3 đỉnh nhọn 60 độ với 3 đoạn thẳng siêu thanh và điểm phanh cực gắt.'
   },
   {
     id: 'CLOVERLEAF_INTERCHANGE',
     name: '29. Nút Giao Hoa Thị Cloverleaf',
-    description: 'Nút giao thông 4 cánh cỏ hoa thị uốn lượn liên tục mềm mại giữa các làn xe tốc độ.'
+    description: 'Nút giao thông 4 cánh cỏ hoa thị đa tầng đan xen liên tục giữa các làn xe tốc độ.'
   },
   {
     id: 'CRESCENT_MOON_BAY',
@@ -159,13 +159,13 @@ export const ROAD_LAYOUT_PRESETS: RoadLayoutPreset[] = [
   },
   {
     id: 'VIPER_FANG_CHICANE',
-    name: '31. Nanh Rắn Uốn Lượn Viper Fang',
-    description: 'Chuỗi góc cua lượn sóng mềm mại nhấp nhô như chuyển động nhịp nhàng của loài rắn săn mồi.'
+    name: '31. Nanh Rắn Độc Viper Fang',
+    description: 'Chuỗi chicane zic-zac liên hoàn đổi hướng gắt gao như cú đớp của loài rắn độc.'
   },
   {
     id: 'LABYRINTH_METROPOLIS',
-    name: '32. Đại Lộ Đô Thị Labyrinth',
-    description: 'Cung đường đại lộ uốn lượn liên tục luồn lách giữa các tòa cao ốc chọc trời của siêu đô thị tương lai.'
+    name: '32. Mê Cung Đô Thị Labyrinth',
+    description: 'Luồn lách qua những con hẻm cao ốc chọc trời và hầm ngầm của siêu đô thị tương lai.'
   },
   {
     id: 'TORNADO_VORTEX_FUNNEL',

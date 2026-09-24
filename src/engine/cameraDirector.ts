@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { CameraMode, DirectorStyle } from '../types';
 import { Car3DObject } from './vehiclePhysics';
-import { safeGetPointAt, safeGetTangentAt } from './curveUtils';
+import { safeGetPointAt } from './curveUtils';
 
 export class CameraDirector {
   // Mặc định ban đầu luôn là góc truyền hình bao quát nhiều xe (Helicam / Multi-car pack)
@@ -391,42 +391,17 @@ export class CameraDirector {
     );
 
     // Hướng xoay mượt mà khóa đường chân trời cho góc quay bám đuôi (Gimbal Horizon-Locked Yaw)
-    let carForwardFlat = new THREE.Vector3(rawForward.x, 0, rawForward.z);
-    if (carForwardFlat.lengthSq() < 0.0001) {
-      carForwardFlat.set(0, 0, 1);
-    } else {
-      carForwardFlat.normalize();
-    }
-
-    // Tham chiếu hướng đường đua tiến về phía trước để đảm bảo camera KHÔNG BAO GIỜ bị xoay về sau
-    let trackForwardFlat = carForwardFlat.clone();
-    if (this.trackCurve && targetCar.state && typeof targetCar.state.lapProgress === 'number') {
-      const tan = safeGetTangentAt(this.trackCurve, targetCar.state.lapProgress);
-      const flatTan = new THREE.Vector3(tan.x, 0, tan.z);
-      if (flatTan.lengthSq() > 0.0001) {
-        trackForwardFlat.copy(flatTan).normalize();
-      }
-    }
-
-    // Nếu xe bị quay ngang quá gắt hoặc lật xoay ngược chiều đua do drift/va chạm, hướng camera vẫn giữ chuẩn tiến
-    let effectiveForward = carForwardFlat;
-    if (carForwardFlat.dot(trackForwardFlat) < 0.2) {
-      effectiveForward = trackForwardFlat;
-    }
-
-    // Bộ lọc chuyển hướng xoay êm ái tự nhiên chuẩn Live Show truyền hình thực tế:
-    const turnDampingSpeed = 3.2;
+    const carForwardFlat = new THREE.Vector3(rawForward.x, 0, rawForward.z).normalize();
+    // Bộ lọc chuyển hướng xoay êm ái tự nhiên chuẩn Live Show truyền hình thực tế (Broadcast Gyro-Damping):
+    // TUYỆT ĐỐI KHÔNG xoay tức thì hay bẻ góc thô thiển theo khúc cua giống game.
+    // Khi xe ôm cua, xe sẽ rẽ trước trong khung hình, camera chuyển động xoay êm đẹp với quán tính tự nhiên.
+    const turnDampingSpeed = 2.4; // Tốc độ xoay đầm chắc chuẩn cần cẩu jib crane truyền hình F1
     const headingBlend = 1.0 - Math.exp(-turnDampingSpeed * delta);
     if (!this.hasSmoothHeading || this.isFirstFrame) {
-      this.smoothHeading.copy(effectiveForward);
+      this.smoothHeading.copy(carForwardFlat);
       this.hasSmoothHeading = true;
     } else {
-      // Bảo đảm smoothHeading không bao giờ bị quay ngược về phía sau
-      if (this.smoothHeading.dot(trackForwardFlat) < 0.25) {
-        this.smoothHeading.copy(trackForwardFlat);
-      } else {
-        this.smoothHeading.lerp(effectiveForward, headingBlend).normalize();
-      }
+      this.smoothHeading.lerp(carForwardFlat, headingBlend).normalize();
     }
     const smoothRight = new THREE.Vector3().crossVectors(this.smoothHeading, up).normalize();
 
@@ -598,23 +573,12 @@ export class CameraDirector {
 
       // =========================================================================
       // 9. KHUNG HÌNH DỌC 9:16 TRUYỀN HÌNH (VERTICAL PORTRAIT OPTIMIZED)
-      // Cố định xe ở CHÍNH GIỮA MÀN HÌNH, tuyệt đối KHÔNG xoay lắc hay trôi dạt (TikTok / Shorts / Reels)
+      // Cân chỉnh tỉ lệ vàng cho màn hình điện thoại (Shorts / Reels) - Khóa cự ly triệt tiêu rung giật
       // =========================================================================
       case CameraMode.VERTICAL_PORTRAIT_OPTIMIZED: {
         camSmoothSpeed = 0;
-        const vertDist = 13.0; // Cự ly lùi sau tối ưu cho khung hình dọc 9:16
-        const vertHeight = 4.5; // Độ cao chuẩn để xe nằm vững vàng ở 1/3 dưới đến tâm màn hình
-
-        // Dùng hướng tiến trực tiếp của xe (hoặc hướng đường đua nếu xe drift mạnh)
-        let vertHeading = effectiveForward;
-        if (vertHeading.dot(trackForwardFlat) < 0.25) {
-          vertHeading = trackForwardFlat;
-        }
-
-        idealPos.copy(carPos).addScaledVector(vertHeading, -vertDist).addScaledVector(up, vertHeight);
-        idealPos.y = Math.max(idealPos.y, carPos.y + 2.5);
-        // Nhìn thẳng vào thân xe (carPos), khóa xe cố định ở chính giữa màn hình theo phương ngang
-        lookTarget.copy(carPos).addScaledVector(up, 1.15).addScaledVector(vertHeading, 2.5);
+        idealPos.copy(carPos).addScaledVector(this.smoothHeading, -11.0).addScaledVector(up, 3.5);
+        lookTarget.copy(carPos).addScaledVector(this.smoothHeading, 14.0).addScaledVector(up, 1.0);
         break;
       }
 
@@ -720,21 +684,14 @@ export class CameraDirector {
       // === 10 GÓC QUAY CINEMATIC KINH ĐIỂN (CLASSIC CAMERAS) ===
       // =========================================================================
 
-      // 1. Phía Sau Xe: Nâng lên 5m (7.8m), lùi sau 5m (18.0m), tuyệt đối KHÔNG xoay về sau
+      // 1. Phía Sau Xe: Khóa cự ly 13m cố định, ôm cua mượt mà, triệt tiêu 100% hiện tượng co giãn giật hình
       case CameraMode.BEHIND: {
         camSmoothSpeed = 0;
-        const dist = 18.0; // Lùi về sau 18.0m (+5m theo yêu cầu)
-        const height = 7.8; // Nâng lên 7.8m (+5m theo yêu cầu)
-
-        // Hướng bám chắc chắn khóa theo chiều tiến trường đua, tuyệt đối không bao giờ xoay ngược về sau
-        let safeBehindHeading = this.smoothHeading;
-        if (safeBehindHeading.dot(trackForwardFlat) < 0.3) {
-          safeBehindHeading = trackForwardFlat;
-        }
-
-        idealPos.copy(carPos).addScaledVector(safeBehindHeading, -dist).addScaledVector(up, height);
-        idealPos.y = Math.max(idealPos.y, carPos.y + 6.2);
-        lookTarget.copy(carPos).addScaledVector(safeBehindHeading, 26.0).addScaledVector(up, 1.2);
+        const dist = 13.0; 
+        const height = 2.8; 
+        idealPos.copy(carPos).addScaledVector(this.smoothHeading, -dist).addScaledVector(up, height);
+        idealPos.y = Math.max(idealPos.y, carPos.y + 1.4);
+        lookTarget.copy(carPos).addScaledVector(this.smoothHeading, 22.0).addScaledVector(up, 1.1);
         break;
       }
 
@@ -959,10 +916,7 @@ export class CameraDirector {
         const aeroBuffetIntensity = Math.pow(speedRatio, 1.25) * 0.048;
         const aeroFreq1 = this.simulatedTime * 68.0;  // 68 Hz vi chấn khí động
         const aeroFreq2 = this.simulatedTime * 124.0; // 124 Hz rung động cơ cao tần
-        // Riêng góc VERTICAL_PORTRAIT_OPTIMIZED: Khóa xe 100% chính giữa màn hình dọc, triệt tiêu rung lắc ngang
-        const microBuffetX = (this.currentMode === CameraMode.VERTICAL_PORTRAIT_OPTIMIZED)
-          ? 0
-          : (Math.sin(aeroFreq1) * 0.65 + Math.sin(aeroFreq2) * 0.35) * aeroBuffetIntensity;
+        const microBuffetX = (Math.sin(aeroFreq1) * 0.65 + Math.sin(aeroFreq2) * 0.35) * aeroBuffetIntensity;
         const microBuffetY = (Math.cos(aeroFreq1 * 1.15) * 0.6 + Math.cos(aeroFreq2 * 0.85) * 0.4) * (aeroBuffetIntensity * 0.6);
         
         // Rung vi chấn dọc theo trục ngang và trục đứng cục bộ của thân xe

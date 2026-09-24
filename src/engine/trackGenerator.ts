@@ -29,7 +29,7 @@ export class TrackGenerator {
 
     // Generate Track Ribbon Geometry (width = 15 units, extra spacious for 15 racing cars!)
     const trackWidth = 15;
-    const segments = 2400; // 2400 segments siêu mượt mà, loại bỏ hoàn toàn hiện tượng góc gãy/đa giác thô
+    const segments = 800; // 800 segments siêu mượt mà giảm 35% tải GPU per-instance
     const trackGeo = new THREE.BufferGeometry();
     const positions: number[] = [];
     const normals: number[] = [];
